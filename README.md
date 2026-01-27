@@ -97,6 +97,15 @@ classDiagram
         +DateTime UpdatedAt
     }
 
+    class AbsenceRequestComment {
+        +Guid Id
+        +Guid AbsenceRequestId
+        +Guid UserId
+        +string Content
+        +DateTime CreatedAt
+        +DateTime UpdatedAt
+    }
+
     class Notification {
         +Guid Id
         +Guid UserId
@@ -116,6 +125,7 @@ classDiagram
         TICKET_COMMENTED
         ABSENCE_APPROVED
         ABSENCE_REJECTED
+        ABSENCE_COMMENTED
         SHIFT_CREATED
         SHIFT_CANCELLED
         FEEDBACK_RECEIVED
@@ -132,8 +142,10 @@ classDiagram
     Ticket "1" --> "*" TicketComment : has
     Ticket --> TicketStatus : uses
     TicketComment "*" --> "1" User : created by
+    AbsenceRequest "1" --> "*" AbsenceRequestComment : has
     AbsenceRequest --> AbsenceType : uses
     AbsenceRequest --> RequestStatus : uses
     AbsenceRequest "*" --> "0..1" Shift : cancels
+    AbsenceRequestComment "*" --> "1" User : created by
     Notification --> NotificationType : uses
 ```
