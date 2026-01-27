@@ -47,7 +47,7 @@ classDiagram
     class Feedback {
         +Guid Id
         +Guid DepartmentId
-        +bool IsPositive
+        +int Rating
         +DateTime CreatedAt
     }
 
