@@ -24,6 +24,10 @@
 # Secrets
 appsettings.json
 
+# Environment variables
+.env
+.env.*
+
 # Flutter
 # Miscellaneous
 *.class
