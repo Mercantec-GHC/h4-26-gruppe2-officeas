@@ -60,14 +60,31 @@ func main() {
 
 	println("Migrations applied successfully")
 
-	// Setup HTTP routes
-	http.HandleFunc("/health", healthHandler)
-	http.HandleFunc("/departments", departmentsHandler(db))
-	http.HandleFunc("/departments/create", createDepartmentHandler(db))
-	http.HandleFunc("/users", usersHandler(db))
-	http.HandleFunc("/users/create", createUserHandler(db))
-	http.HandleFunc("/tickets", ticketsHandler(db))
-	http.HandleFunc("/tickets/create", createTicketHandler(db))
+	// CORS middleware
+	corsMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			// Handle preflight requests
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			next(w, r)
+		}
+	}
+
+	// Setup HTTP routes with CORS
+	http.HandleFunc("/health", corsMiddleware(healthHandler))
+	http.HandleFunc("/departments", corsMiddleware(departmentsHandler(db)))
+	http.HandleFunc("/departments/create", corsMiddleware(createDepartmentHandler(db)))
+	http.HandleFunc("/users", corsMiddleware(usersHandler(db)))
+	http.HandleFunc("/users/create", corsMiddleware(createUserHandler(db)))
+	http.HandleFunc("/tickets", corsMiddleware(ticketsHandler(db)))
+	http.HandleFunc("/tickets/create", corsMiddleware(createTicketHandler(db)))
 
 	port := ":8080"
 	println("Server running on http://localhost:8080")
