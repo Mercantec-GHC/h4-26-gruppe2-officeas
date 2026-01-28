@@ -1,5 +1,94 @@
-# H4
-Template til H4 med Flutter, React Native og C# backend
+# H4 - YourOffice
+Office Management System med Flutter frontend og Go backend
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Docker og Docker Compose installeret
+- Git
+
+### Start projektet
+
+1. **Sæt database URL op:**
+   - Opret eller opdater `gobackend/.env` med din PostgreSQL connection string:
+   ```env
+   DATABASE_URL=postgres://user:password@host:port/database
+   ```
+
+2. **Start alle services:**
+   ```bash
+   docker compose up --build
+   ```
+
+3. **Tjek at alt kører:**
+   ```bash
+   docker compose ps
+   ```
+
+### Services
+
+Efter opstart er følgende services tilgængelige:
+
+- **Nginx Reverse Proxy:** `http://localhost:8080`
+- **Flutter Web App:** `http://localhost:8080/` (gennem nginx)
+- **Go Backend API:** `http://localhost:8080/api/` (gennem nginx)
+- **Swagger UI:** `http://localhost:8080/swagger/` eller `http://localhost:8080/api/swagger/`
+
+### API Endpoints
+
+Alle API endpoints er tilgængelige gennem nginx på `/api/` prefix:
+
+- Health Check: `GET http://localhost:8080/api/health`
+- Departments: `GET http://localhost:8080/api/departments`
+- Users: `GET http://localhost:8080/api/users`
+- Tickets: `GET http://localhost:8080/api/tickets`
+
+## 📚 Swagger API Documentation
+
+Swagger UI er tilgængelig på:
+
+**Primary URL:**
+```
+http://localhost:8080/swagger/
+```
+
+## 🛠️ Development
+
+### Genstart services
+
+```bash
+# Genstart alle services
+docker compose restart
+
+# Genstart specifik service
+docker compose restart backend
+docker compose restart nginx
+```
+
+### Se logs
+
+```bash
+# Alle logs
+docker compose logs -f
+
+# Specifik service
+docker compose logs -f backend
+docker compose logs -f nginx
+```
+
+### Stop services
+
+```bash
+docker compose down
+```
+
+### Rebuild efter kode ændringer
+
+```bash
+# Rebuild og restart
+docker compose up --build
+```
 
 ## YourOffice Domain Model
 
