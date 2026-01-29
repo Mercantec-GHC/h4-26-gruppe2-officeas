@@ -18,7 +18,7 @@ Office Management System med Flutter frontend og Go backend
 
 2. **Start alle services:**
    ```bash
-   docker compose up --build
+   docker compose up --build -d
    ```
 
 3. **Tjek at alt kører:**
