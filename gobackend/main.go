@@ -1,16 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 
+	"stuff/handlers"
 	"stuff/models"
 
-	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
-	_ "stuff/docs" // Import generated Swagger docs
+	_ "stuff/docs"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -47,6 +47,19 @@ func runMigrations(db *gorm.DB) error {
 	)
 }
 
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -66,241 +79,46 @@ func main() {
 
 	println("Migrations applied successfully")
 
-	// CORS middleware
-	corsMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	router := mux.NewRouter()
 
-			// Handle preflight requests
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
+	// Health
+	router.HandleFunc("/health", handlers.Health).Methods("GET")
 
-			next(w, r)
-		}
-	}
+	// Departments (list + create only)
+	handlers.RegisterDepartments(router, handlers.Departments{DB: db}, "/departments")
 
-	// Setup HTTP routes with CORS
-	http.HandleFunc("/health", corsMiddleware(healthHandler))
-	http.HandleFunc("/departments", corsMiddleware(departmentsHandler(db)))
-	http.HandleFunc("/departments/create", corsMiddleware(createDepartmentHandler(db)))
-	http.HandleFunc("/users", corsMiddleware(usersHandler(db)))
-	http.HandleFunc("/users/create", corsMiddleware(createUserHandler(db)))
-	http.HandleFunc("/tickets", corsMiddleware(ticketsHandler(db)))
-	http.HandleFunc("/tickets/create", corsMiddleware(createTicketHandler(db)))
+	// Users CRUD
+	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
 
-	// Swagger UI - accessible at /swagger/ or /swagger/index.html
-	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	// Tickets CRUD
+	handlers.RegisterTickets(router, handlers.Tickets{DB: db}, "/tickets")
+
+	// Shifts CRUD
+	handlers.RegisterShifts(router, handlers.Shifts{DB: db}, "/shifts")
+
+	// Absence requests CRUD
+	handlers.RegisterAbsenceRequests(router, handlers.AbsenceRequests{DB: db}, "/absence-requests")
+
+	// Ticket comments (nested + by id)
+	handlers.RegisterTicketComments(router, handlers.TicketComments{DB: db}, "/tickets", "/ticket-comments")
+
+	// Absence request comments (nested + by id)
+	handlers.RegisterAbsenceRequestComments(router, handlers.AbsenceRequestComments{DB: db}, "/absence-requests", "/absence-request-comments")
+
+	// Swagger doc.json
+	router.HandleFunc("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		http.ServeFile(w, r, "./docs/swagger.json")
+	}).Methods("GET")
+
+	// Swagger UI
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+
+	handler := corsMiddleware(router)
 
 	port := ":8080"
 	println("Server running on http://localhost:8080")
-	if err := http.ListenAndServe(port, nil); err != nil {
+	if err := http.ListenAndServe(port, handler); err != nil {
 		panic(err)
-	}
-}
-
-// HealthCheck godoc
-// @Summary      Health check endpoint
-// @Description  Check if the API is running
-// @Tags         health
-// @Accept       json
-// @Produce      json
-// @Success      200  {object}  map[string]string
-// @Router       /health [get]
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
-
-// GetDepartments godoc
-// @Summary      Get all departments
-// @Description  Retrieve a list of all departments
-// @Tags         departments
-// @Accept       json
-// @Produce      json
-// @Success      200  {array}   models.Department
-// @Failure      500  {object}  map[string]string
-// @Router       /departments [get]
-func departmentsHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var departments []models.Department
-		if err := db.Find(&departments).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(departments)
-	}
-}
-
-// CreateDepartment godoc
-// @Summary      Create a new department
-// @Description  Create a new department with the provided information
-// @Tags         departments
-// @Accept       json
-// @Produce      json
-// @Param        department  body      models.Department  true  "Department information"
-// @Success      201  {object}  models.Department
-// @Failure      400  {object}  map[string]string
-// @Failure      500  {object}  map[string]string
-// @Router       /departments/create [post]
-func createDepartmentHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var dept models.Department
-		if err := json.NewDecoder(r.Body).Decode(&dept); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		dept.Id = uuid.New()
-		if err := db.Create(&dept).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(dept)
-	}
-}
-
-// GetUsers godoc
-// @Summary      Get all users
-// @Description  Retrieve a list of all users with their department information
-// @Tags         users
-// @Accept       json
-// @Produce      json
-// @Success      200  {array}   models.User
-// @Failure      500  {object}  map[string]string
-// @Router       /users [get]
-func usersHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var users []models.User
-		if err := db.Preload("Department").Find(&users).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(users)
-	}
-}
-
-// CreateUser godoc
-// @Summary      Create a new user
-// @Description  Create a new user with the provided information
-// @Tags         users
-// @Accept       json
-// @Produce      json
-// @Param        user  body      models.User  true  "User information"
-// @Success      201  {object}  models.User
-// @Failure      400  {object}  map[string]string
-// @Failure      500  {object}  map[string]string
-// @Router       /users/create [post]
-func createUserHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var user models.User
-		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		user.Id = uuid.New()
-		if err := db.Create(&user).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(user)
-	}
-}
-
-// GetTickets godoc
-// @Summary      Get all tickets
-// @Description  Retrieve a list of all tickets with user and comment information
-// @Tags         tickets
-// @Accept       json
-// @Produce      json
-// @Success      200  {array}   models.Ticket
-// @Failure      500  {object}  map[string]string
-// @Router       /tickets [get]
-func ticketsHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var tickets []models.Ticket
-		if err := db.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").Find(&tickets).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(tickets)
-	}
-}
-
-// CreateTicket godoc
-// @Summary      Create a new ticket
-// @Description  Create a new support ticket (status will be set to OPEN automatically)
-// @Tags         tickets
-// @Accept       json
-// @Produce      json
-// @Param        ticket  body      models.Ticket  true  "Ticket information"
-// @Success      201  {object}  models.Ticket
-// @Failure      400  {object}  map[string]string
-// @Failure      500  {object}  map[string]string
-// @Router       /tickets/create [post]
-func createTicketHandler(db *gorm.DB) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var ticket models.Ticket
-		if err := json.NewDecoder(r.Body).Decode(&ticket); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		ticket.Id = uuid.New()
-		ticket.Status = models.TicketStatusOpen
-		if err := db.Create(&ticket).Error; err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(ticket)
 	}
 }
