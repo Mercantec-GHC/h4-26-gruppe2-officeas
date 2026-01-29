@@ -20,20 +20,9 @@ import (
 // @BasePath  /api
 
 func runMigrations(db *gorm.DB) error {
-	// Drop all tables in reverse order of dependencies to avoid constraint errors
-	_ = db.Migrator().DropTable(
-		&models.Notification{},
-		&models.AbsenceRequestComment{},
-		&models.AbsenceRequest{},
-		&models.TicketComment{},
-		&models.Ticket{},
-		&models.Feedback{},
-		&models.Shift{},
-		&models.User{},
-		&models.Department{},
-	)
-
-	// Create fresh tables with correct schema
+	// AutoMigrate will create tables if they don't exist, or update schema if models changed
+	// It will NOT drop existing tables or data
+	
 	return db.AutoMigrate(
 		&models.Department{},
 		&models.User{},
