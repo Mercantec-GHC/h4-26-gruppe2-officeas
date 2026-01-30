@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
-	_ "stuff/docs"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -78,6 +77,9 @@ func main() {
 
 	// Users CRUD
 	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
+
+	// Auth: login
+	router.HandleFunc("/login", handlers.Auth{DB: db}.Login).Methods("POST")
 
 	// Tickets CRUD
 	handlers.RegisterTickets(router, handlers.Tickets{DB: db}, "/tickets")

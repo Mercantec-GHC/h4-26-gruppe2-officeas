@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -75,20 +76,38 @@ func (h Users) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Failure      400  {string}  string  "Bad request"
 // @Router       /users [post]
 func (h Users) Create(w http.ResponseWriter, r *http.Request) {
-	var u models.User
-	
-	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+	// Expect plaintext password in request; hash it before storing
+	var req struct {
+		Name         string    `json:"name"`
+		Email        string    `json:"email"`
+		Password     string    `json:"password"`
+		DepartmentId uuid.UUID `json:"department_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
-	u.Id = uuid.New()
-	
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		return
+	}
+
+	u := models.User{
+		Id:           uuid.New(),
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: string(hashed),
+		DepartmentId: req.DepartmentId,
+	}
+
 	if err := h.DB.Create(&u).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(u)
