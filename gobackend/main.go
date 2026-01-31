@@ -76,6 +76,9 @@ func main() {
 	// Departments (list + create only)
 	handlers.RegisterDepartments(router, handlers.Departments{DB: db}, "/departments")
 
+	// Feedback CRUD
+	handlers.RegisterFeedback(router, handlers.Feedback{DB: db}, "/feedback")
+
 	// Users CRUD
 	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
 
