@@ -35,15 +35,6 @@ Efter opstart er følgende services tilgængelige:
 - **Go Backend API:** `http://localhost:8080/api/` (gennem nginx)
 - **Swagger UI:** `http://localhost:8080/swagger/` eller `http://localhost:8080/api/swagger/`
 
-### API Endpoints
-
-Alle API endpoints er tilgængelige gennem nginx på `/api/` prefix:
-
-- Health Check: `GET http://localhost:8080/api/health`
-- Departments: `GET http://localhost:8080/api/departments`
-- Users: `GET http://localhost:8080/api/users`
-- Tickets: `GET http://localhost:8080/api/tickets`
-
 ## 📚 Swagger API Documentation
 
 Swagger UI er tilgængelig på:
