@@ -1,19 +1,19 @@
 /// App Configuration Manager
-/// 
+///
 /// Håndterer environment-specifik konfiguration og giver nem adgang til
 /// API URLs, timeouts, og andre indstillinger baseret på valgt miljø.
-/// 
+///
 /// Usage:
 /// ```dart
 /// // Initialisér med environment
 /// await AppConfig.initialize(Environment.development);
-/// 
+///
 /// // Brug i kode
 /// final baseUrl = AppConfig.instance.apiBaseUrl;
 /// ```
 class AppConfig {
   static AppConfig? _instance;
-  
+
   final Environment environment;
   final String apiBaseUrl;
   final int apiTimeout;
@@ -33,14 +33,14 @@ class AppConfig {
     if (_instance == null) {
       throw Exception(
         'AppConfig er ikke initialiseret! '
-        'Kald AppConfig.initialize() før brug.'
+        'Kald AppConfig.initialize() før brug.',
       );
     }
     return _instance!;
   }
 
   /// Initialisér app konfiguration
-  /// 
+  ///
   /// Kaldes fra main.dart før app starter:
   /// ```dart
   /// await AppConfig.initialize(Environment.development);
@@ -57,13 +57,13 @@ class AppConfig {
 
   /// Check om vi kører i development mode
   bool get isDevelopment => environment == Environment.development;
-  
+
   /// Check om vi kører i production mode
   bool get isProduction => environment == Environment.production;
 }
 
 /// Environment konfigurationer
-/// 
+///
 /// Definer forskellige miljøer med deres specifikke indstillinger.
 /// Nem at udvide med flere miljøer (staging, test, osv.)
 class Environment {
@@ -83,9 +83,10 @@ class Environment {
 
   /// Development environment (localhost)
   /// Brug når du udvikler lokalt og API kører på din maskine
+  /// Note: Use localhost for Docker, or 127.0.0.1 for iOS Simulator
   static const development = Environment._(
     name: 'development',
-    apiBaseUrl: 'http://localhost:5000/api',
+    apiBaseUrl: 'http://localhost:8080',
     apiTimeout: 30000, // 30 sekunder
     enableApiLogging: true,
     enableErrorLogging: true,
@@ -121,4 +122,3 @@ class Environment {
   @override
   int get hashCode => name.hashCode;
 }
-
