@@ -85,6 +85,11 @@ func main() {
 		http.ServeFile(w, r, "./docs/swagger.json")
 	}).Methods("GET")
 
+	// Feedback CRUD
+	handlers.RegisterFeedback(router, handlers.Feedback{DB: db}, "/feedback")
+
+	// Users CRUD
+	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
 	// Auth routes with rate limiting
 	authRouter := router.PathPrefix("/auth").Subrouter()
 	authRouter.Use(rateLimiter.RateLimitMiddleware)
