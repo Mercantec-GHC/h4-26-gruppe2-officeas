@@ -18,8 +18,11 @@ import (
 )
 
 // @title           YourOffice API
-// @host      localhost:8080
-// @BasePath  /api
+// @host            localhost:8080
+// @BasePath        /api
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
 
 func runMigrations(db *gorm.DB) error {
 	// AutoMigrate will create tables if they don't exist, or update schema if models changed

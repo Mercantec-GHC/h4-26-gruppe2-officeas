@@ -22,6 +22,7 @@ type TicketComments struct {
 // @Produce      json
 // @Param        ticketId   path      string  true  "Ticket ID"
 // @Success      200  {array}   models.TicketComment
+// @Security     BearerAuth
 // @Router       /tickets/{ticketId}/comments [get]
 func (h TicketComments) ListByTicket(w http.ResponseWriter, r *http.Request) {
 	ticketId, ok := uuidParam(w, r, "ticketId")
@@ -50,6 +51,7 @@ func (h TicketComments) ListByTicket(w http.ResponseWriter, r *http.Request) {
 // @Param        comment  body      models.TicketComment  true  "Ticket Comment"
 // @Success      201  {object}  models.TicketComment
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
 // @Router       /tickets/{ticketId}/comments [post]
 func (h TicketComments) CreateOnTicket(w http.ResponseWriter, r *http.Request) {
 	ticketId, ok := uuidParam(w, r, "ticketId")
@@ -86,6 +88,7 @@ func (h TicketComments) CreateOnTicket(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket Comment ID"
 // @Success      200  {object}  models.TicketComment
 // @Failure      404  {string}  string  "ticket comment not found"
+// @Security     BearerAuth
 // @Router       /ticket-comments/{id} [get]
 func (h TicketComments) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -119,6 +122,7 @@ func (h TicketComments) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        comment  body      models.TicketComment  true  "Ticket Comment"
 // @Success      200  {object}  models.TicketComment
 // @Failure      404  {string}  string  "ticket comment not found"
+// @Security     BearerAuth
 // @Router       /ticket-comments/{id} [put]
 func (h TicketComments) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -158,6 +162,7 @@ func (h TicketComments) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket Comment ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "ticket comment not found"
+// @Security     BearerAuth
 // @Router       /ticket-comments/{id} [delete]
 func (h TicketComments) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")

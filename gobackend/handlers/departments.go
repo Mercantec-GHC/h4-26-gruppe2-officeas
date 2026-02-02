@@ -21,6 +21,7 @@ type Departments struct {
 // @Tags         departments
 // @Produce      json
 // @Success      200  {array}   models.Department
+// @Security     BearerAuth
 // @Router       /departments [get]
 func (h Departments) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.Department
@@ -41,6 +42,7 @@ func (h Departments) List(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        department  body      models.Department  true  "Department"
 // @Success      201  {object}  models.Department
+// @Security     BearerAuth
 // @Router       /departments [post]
 func (h Departments) Create(w http.ResponseWriter, r *http.Request) {
 	var d models.Department

@@ -22,6 +22,7 @@ type AbsenceRequestComments struct {
 // @Produce      json
 // @Param        absenceRequestId   path      string  true  "Absence Request ID"
 // @Success      200  {array}   models.AbsenceRequestComment
+// @Security     BearerAuth
 // @Router       /absence-requests/{absenceRequestId}/comments [get]
 func (h AbsenceRequestComments) ListByAbsenceRequest(w http.ResponseWriter, r *http.Request) {
 	absenceRequestId, ok := uuidParam(w, r, "absenceRequestId")
@@ -50,6 +51,7 @@ func (h AbsenceRequestComments) ListByAbsenceRequest(w http.ResponseWriter, r *h
 // @Param        comment  body      models.AbsenceRequestComment  true  "Absence Request Comment"
 // @Success      201  {object}  models.AbsenceRequestComment
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
 // @Router       /absence-requests/{absenceRequestId}/comments [post]
 func (h AbsenceRequestComments) CreateOnAbsenceRequest(w http.ResponseWriter, r *http.Request) {
 	absenceRequestId, ok := uuidParam(w, r, "absenceRequestId")
@@ -86,6 +88,7 @@ func (h AbsenceRequestComments) CreateOnAbsenceRequest(w http.ResponseWriter, r 
 // @Param        id   path      string  true  "Absence Request Comment ID"
 // @Success      200  {object}  models.AbsenceRequestComment
 // @Failure      404  {string}  string  "absence request comment not found"
+// @Security     BearerAuth
 // @Router       /absence-request-comments/{id} [get]
 func (h AbsenceRequestComments) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -119,6 +122,7 @@ func (h AbsenceRequestComments) GetByID(w http.ResponseWriter, r *http.Request) 
 // @Param        comment  body      models.AbsenceRequestComment  true  "Absence Request Comment"
 // @Success      200  {object}  models.AbsenceRequestComment
 // @Failure      404  {string}  string  "absence request comment not found"
+// @Security     BearerAuth
 // @Router       /absence-request-comments/{id} [put]
 func (h AbsenceRequestComments) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -158,6 +162,7 @@ func (h AbsenceRequestComments) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Absence Request Comment ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "absence request comment not found"
+// @Security     BearerAuth
 // @Router       /absence-request-comments/{id} [delete]
 func (h AbsenceRequestComments) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")

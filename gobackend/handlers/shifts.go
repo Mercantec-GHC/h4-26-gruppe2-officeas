@@ -21,6 +21,8 @@ type Shifts struct {
 // @Tags         shifts
 // @Produce      json
 // @Success      200  {array}   models.Shift
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /shifts [get]
 func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.Shift
@@ -41,6 +43,8 @@ func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Shift ID"
 // @Success      200  {object}  models.Shift
 // @Failure      404  {string}  string  "shift not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /shifts/{id} [get]
 func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -73,6 +77,8 @@ func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        shift  body      models.Shift  true  "Shift"
 // @Success      201  {object}  models.Shift
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /shifts [post]
 func (h Shifts) Create(w http.ResponseWriter, r *http.Request) {
 	var s models.Shift
@@ -103,6 +109,8 @@ func (h Shifts) Create(w http.ResponseWriter, r *http.Request) {
 // @Param        shift  body      models.Shift  true  "Shift"
 // @Success      200  {object}  models.Shift
 // @Failure      404  {string}  string  "shift not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /shifts/{id} [put]
 func (h Shifts) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -147,6 +155,8 @@ func (h Shifts) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Shift ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "shift not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /shifts/{id} [delete]
 func (h Shifts) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -176,6 +186,7 @@ func (h Shifts) Delete(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        userId   path      string  true  "User ID"
 // @Success      200  {array}   models.Shift
+// @Security     BearerAuth
 // @Router       /shifts/user/{userId} [get]
 func (h Shifts) ListByUser(w http.ResponseWriter, r *http.Request) {
 	userId, ok := uuidParam(w, r, "userId")
