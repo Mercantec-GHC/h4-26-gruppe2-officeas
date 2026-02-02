@@ -5,6 +5,10 @@ import 'core/di/injection.dart';
 import 'features/weather/bloc/weather_bloc.dart';
 import 'features/weather/view/weather_page.dart';
 import 'features/infographic/view/infographic_page.dart';
+import 'features/auth/bloc/auth_bloc.dart';
+import 'features/auth/bloc/auth_state.dart';
+import 'features/auth/pages/login_page.dart';
+import 'features/home/pages/home_page.dart';
 import 'core/theme/theme.dart';
 
 /// Main entry point
@@ -54,6 +58,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        // Auth BLoC - for authentication
+        BlocProvider(
+          create: (context) => AuthBloc(),
+        ),
         // Weather BLoC - injected via DI
         // Factory registration giver os ny instance hver gang
         BlocProvider(
@@ -65,11 +73,20 @@ class MyApp extends StatelessWidget {
         //   create: (context) => getIt<LoginBloc>(),
         // ),
       ],
-      child: MaterialApp(
-        title: 'H4 Vejr App',
-        theme: appTheme,
-        debugShowCheckedModeBanner: false,
-        home: const MainNavigation(),
+      child: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, state) {
+          return MaterialApp(
+            title: 'OfficeAs',
+            theme: appTheme,
+            debugShowCheckedModeBanner: false,
+            home: state is Authenticated ? const HomePage() : const LoginPage(),
+            routes: {
+              '/login': (context) => const LoginPage(),
+              '/home': (context) => const HomePage(),
+              '/navigation': (context) => const MainNavigation(),
+            },
+          );
+        },
       ),
     );
   }
