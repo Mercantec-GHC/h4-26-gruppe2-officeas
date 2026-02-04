@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
+import 'domain/repositories/shift_repository.dart';
 import 'features/weather/bloc/weather_bloc.dart';
 import 'features/weather/view/weather_page.dart';
 import 'features/infographic/view/infographic_page.dart';
@@ -62,7 +63,12 @@ class MyApp extends StatelessWidget {
       providers: [
         // Auth BLoC - for authentication
         BlocProvider(
-          create: (context) => AuthBloc(),
+          create: (context) {
+            final authBloc = AuthBloc();
+            // Setup auth interceptor after AuthBloc is created
+            setupAuthInterceptor(authBloc);
+            return authBloc;
+          },
         ),
         // Weather BLoC - injected via DI
         // Factory registration giver os ny instance hver gang
@@ -86,7 +92,9 @@ class MyApp extends StatelessWidget {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
               '/navigation': (context) => const MainNavigation(),
-              '/calendar': (context) => const CalendarPage(),
+              '/calendar': (context) => CalendarPage(
+                shiftRepository: getIt<ShiftRepository>(),
+              ),
               '/test': (context) => const TestPage(),
               '/weather': (context) => WeatherPage(),
               '/infographic': (context) => InfographicPage(),
@@ -111,7 +119,9 @@ class _MainNavigationState extends State<MainNavigation> {
   static final List<Widget> _pages = <Widget>[
     WeatherPage(),
     InfographicPage(),
-    const CalendarPage(),
+    CalendarPage(
+      shiftRepository: getIt<ShiftRepository>(),
+    ),
     const TestPage(),
   ];
 
