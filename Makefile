@@ -1,4 +1,4 @@
-.PHONY: help up down ps logs restart backend-build backend-run
+.PHONY: help up down ps logs restart seed backend-build backend-run
 
 .DEFAULT_GOAL := help
 
@@ -10,6 +10,7 @@ help:
 	@echo "  make ps           - Show running services"
 	@echo "  make logs         - Follow logs (all services)"
 	@echo "  make restart      - Restart all services"
+	@echo "  make seed         - Run DB seed (requires DATABASE_URL in gobackend/.env)"
 	@echo "  make backend-build - Build Go backend"
 	@echo "  make backend-run  - Run Go backend locally (requires DATABASE_URL)"
 
@@ -30,6 +31,9 @@ logs:
 
 restart:
 	docker compose restart
+
+seed:
+	cd gobackend && go run ./cmd/seed
 
 backend-build:
 	cd gobackend && go build -o /dev/null ./... && go build -o /dev/null
