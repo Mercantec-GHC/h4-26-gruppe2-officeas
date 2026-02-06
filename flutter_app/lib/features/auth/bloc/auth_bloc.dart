@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../data/models/user_model.dart';
@@ -21,6 +22,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<GitHubSignInRequested>(_onGitHubSignInRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CheckAuthStatus>(_onCheckAuthStatus);
+    
+    // Check auth status on initialization
+    _checkAuthStatusOnInit();
+  }
+
+  Future<void> _checkAuthStatusOnInit() async {
+    try {
+      final isLoggedIn = await _authService.isLoggedIn();
+      if (isLoggedIn) {
+        final token = await _authService.getToken();
+        if (token != null) {
+          _currentToken = token;
+          add(CheckAuthStatus());
+        }
+      }
+    } catch (e) {
+      // Silent fail on init
+      debugPrint('Auth status check failed on init: $e');
+    }
   }
 
   Future<void> _onLoginRequested(
@@ -102,11 +122,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     CheckAuthStatus event,
     Emitter<AuthState> emit,
   ) async {
-    final isLoggedIn = await _authService.isLoggedIn();
-    if (isLoggedIn) {
-      // For now, we'll just mark as authenticated if token exists
-      emit(Unauthenticated());
-    } else {
+    try {
+      final isLoggedIn = await _authService.isLoggedIn();
+      if (isLoggedIn) {
+        final token = await _authService.getToken();
+        if (token != null) {
+          // If we have a token, mark as authenticated
+          // Note: User data could be fetched from backend here if needed
+          emit(Authenticated(user: _currentUser ?? UserModel.empty(), token: token));
+        } else {
+          emit(Unauthenticated());
+        }
+      } else {
+        emit(Unauthenticated());
+      }
+    } catch (e) {
       emit(Unauthenticated());
     }
   }

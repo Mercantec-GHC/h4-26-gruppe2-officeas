@@ -11,7 +11,6 @@ import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/calendar/pages/calendar_page.dart';
-import 'features/test/pages/test_page.dart';
 import 'core/theme/theme.dart';
 
 /// Main entry point
@@ -87,7 +86,7 @@ class MyApp extends StatelessWidget {
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated ? const HomePage() : const TestPage(),
+            home: state is Authenticated ? const HomePage() : const LoginPage(),
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
@@ -95,7 +94,6 @@ class MyApp extends StatelessWidget {
               '/calendar': (context) => CalendarPage(
                 shiftRepository: getIt<ShiftRepository>(),
               ),
-              '/test': (context) => const TestPage(),
               '/weather': (context) => WeatherPage(),
               '/infographic': (context) => InfographicPage(),
             },
@@ -122,7 +120,6 @@ class _MainNavigationState extends State<MainNavigation> {
     CalendarPage(
       shiftRepository: getIt<ShiftRepository>(),
     ),
-    const TestPage(),
   ];
 
   @override
