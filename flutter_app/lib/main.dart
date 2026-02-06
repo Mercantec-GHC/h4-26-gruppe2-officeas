@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
+import 'domain/repositories/shift_repository.dart';
 import 'features/weather/bloc/weather_bloc.dart';
 import 'features/weather/view/weather_page.dart';
 import 'features/infographic/view/infographic_page.dart';
@@ -9,6 +10,7 @@ import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
+import 'features/calendar/pages/calendar_page.dart';
 import 'core/theme/theme.dart';
 
 /// Main entry point
@@ -60,7 +62,12 @@ class MyApp extends StatelessWidget {
       providers: [
         // Auth BLoC - for authentication
         BlocProvider(
-          create: (context) => AuthBloc(),
+          create: (context) {
+            final authBloc = AuthBloc();
+            // Setup auth interceptor after AuthBloc is created
+            setupAuthInterceptor(authBloc);
+            return authBloc;
+          },
         ),
         // Weather BLoC - injected via DI
         // Factory registration giver os ny instance hver gang
@@ -84,6 +91,11 @@ class MyApp extends StatelessWidget {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
               '/navigation': (context) => const MainNavigation(),
+              '/calendar': (context) => CalendarPage(
+                shiftRepository: getIt<ShiftRepository>(),
+              ),
+              '/weather': (context) => WeatherPage(),
+              '/infographic': (context) => InfographicPage(),
             },
           );
         },
@@ -105,6 +117,9 @@ class _MainNavigationState extends State<MainNavigation> {
   static final List<Widget> _pages = <Widget>[
     WeatherPage(),
     InfographicPage(),
+    CalendarPage(
+      shiftRepository: getIt<ShiftRepository>(),
+    ),
   ];
 
   @override
@@ -126,6 +141,14 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.info_outline),
             label: 'BLoC',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Kalender',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bug_report),
+            label: 'Test',
           ),
         ],
       ),

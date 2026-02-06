@@ -1,8 +1,12 @@
 import 'package:get_it/get_it.dart';
 import '../../data/datasources/weather_remote_datasource.dart';
+import '../../data/datasources/shift_remote_datasource.dart';
 import '../../data/repositories/weather_repository_impl.dart';
+import '../../data/repositories/shift_repository_impl.dart';
 import '../../domain/repositories/weather_repository.dart';
+import '../../domain/repositories/shift_repository.dart';
 import '../../features/weather/bloc/weather_bloc.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
 import '../api/api_client.dart';
 
 /// Dependency Injection Container
@@ -55,6 +59,12 @@ Future<void> setupDependencyInjection() async {
     ),
   );
 
+  getIt.registerLazySingleton<ShiftRemoteDataSource>(
+    () => ShiftRemoteDataSource(
+      apiClient: getIt<ApiClient>(),
+    ),
+  );
+
   // TODO: Tilføj local data source her når I implementerer caching
   // getIt.registerLazySingleton<WeatherLocalDataSource>(
   //   () => WeatherLocalDataSourceImpl(),
@@ -69,6 +79,12 @@ Future<void> setupDependencyInjection() async {
     () => WeatherRepositoryImpl(
       remoteDataSource: getIt<WeatherRemoteDataSource>(),
       // localDataSource: getIt<WeatherLocalDataSource>(), // når caching tilføjes
+    ),
+  );
+
+  getIt.registerLazySingleton<ShiftRepository>(
+    () => ShiftRepositoryImpl(
+      remoteDataSource: getIt<ShiftRemoteDataSource>(),
     ),
   );
 
@@ -96,6 +112,16 @@ Future<void> setupDependencyInjection() async {
   //     authRepository: getIt<AuthRepository>(),
   //   ),
   // );
+}
+
+/// Setup auth interceptor with AuthBloc
+/// 
+/// Called from main.dart after AuthBloc is created to inject
+/// the current token provider.
+void setupAuthInterceptor(AuthBloc authBloc) {
+  getIt<ApiClient>().addAuthInterceptor(
+    () async => authBloc.currentToken,
+  );
 }
 
 /// Reset dependency injection
