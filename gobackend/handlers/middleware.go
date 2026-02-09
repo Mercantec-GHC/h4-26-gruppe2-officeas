@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 	"strings"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 // contextKey is a type for context keys
@@ -38,13 +36,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		tokenString := parts[1]
 
 		// Parse and validate token
-		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-			// Verify signing method
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return getJWTSecret(), nil
-		})
+		token, err := parseAndValidateJWT(tokenString)
 
 		if err != nil {
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
@@ -88,7 +80,7 @@ func GetEmailFromContext(ctx context.Context) (string, bool) {
 func OptionalAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
-		
+
 		// If no auth header, just continue
 		if authHeader == "" {
 			next.ServeHTTP(w, r)
@@ -99,12 +91,7 @@ func OptionalAuthMiddleware(next http.Handler) http.Handler {
 		parts := strings.Split(authHeader, " ")
 		if len(parts) == 2 && parts[0] == "Bearer" {
 			tokenString := parts[1]
-			token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, jwt.ErrSignatureInvalid
-				}
-				return getJWTSecret(), nil
-			})
+			token, err := parseAndValidateJWT(tokenString)
 
 			if err == nil && token.Valid {
 				if claims, ok := token.Claims.(*Claims); ok {

@@ -23,6 +23,11 @@ func runMigrations(db *gorm.DB) error {
 		&models.AbsenceRequest{},
 		&models.AbsenceRequestComment{},
 		&models.Notification{},
+		// Messaging module
+		&models.Conversation{},
+		&models.ConversationMember{},
+		&models.Message{},
+		&models.DeviceToken{},
 	)
 }
 
@@ -37,7 +42,7 @@ func main() {
 	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect to database: %v\n", err)
 		os.Exit(1)

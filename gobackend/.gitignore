@@ -2,6 +2,8 @@
 docs/
 
 # Environment files
+.env
+.env.*
 .env.local
 
 # IDE
