@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
+import '../../home/feedback_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -45,6 +46,7 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
+
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -62,6 +64,7 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // ---------- CARD ----------
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -83,30 +86,40 @@ class HomePage extends StatelessWidget {
                         color: Colors.blue.shade700,
                       ),
                       const SizedBox(height: 24),
+
                       Text(
                         'Welcome to OfficeAs!',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.blue.shade700,
                             ),
                       ),
+
                       const SizedBox(height: 16),
+
                       if (user != null) ...[
                         Text(
                           'Hello, ${user.name}!',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.grey.shade700,
-                              ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(color: Colors.grey.shade700),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           user.email,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Colors.grey.shade600),
                         ),
                       ],
+
                       const SizedBox(height: 24),
+
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -132,10 +145,39 @@ class HomePage extends StatelessWidget {
                           ],
                         ),
                       ),
+
+                      const SizedBox(height: 24),
+
+                      // ---------- FEEDBACK BUTTON ----------
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.feedback),
+                          label: const Text('Give Feedback'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade700,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const FeedbackPage(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 32),
+
                 Text(
                   'More features coming soon...',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(

@@ -18,6 +18,7 @@ type Feedback struct {
 
 // List godoc
 // @Summary      Get all feedback
+// @Description  Returns all feedback entries
 // @Tags         feedback
 // @Produce      json
 // @Success      200  {array}   models.Feedback
@@ -44,8 +45,8 @@ func (h Feedback) List(w http.ResponseWriter, r *http.Request) {
 // @Router       /feedback/{id} [get]
 func (h Feedback) GetByID(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	var feedback models.Feedback
 
+	var feedback models.Feedback
 	if err := h.DB.First(&feedback, "id = ?", id).Error; err != nil {
 		http.Error(w, "Feedback not found", http.StatusNotFound)
 		return
@@ -56,24 +57,66 @@ func (h Feedback) GetByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create godoc
-// @Summary      Create a new feedback
+// @Summary      Create feedback
+// @Description  Create feedback for the logged-in user's department
 // @Tags         feedback
 // @Accept       json
 // @Produce      json
-// @Param        feedback  body      models.Feedback  true  "Feedback"
+// @Param        feedback  body      handlers.FeedbackCreateRequest  true  "Feedback"
 // @Success      201  {object}  models.Feedback
-// @Failure      400  {string}  string  "Bad request"
+// @Failure      401  {string}  string  "Unauthorized"
+// @Security     BearerAuth
 // @Router       /feedback [post]
 func (h Feedback) Create(w http.ResponseWriter, r *http.Request) {
-	var f models.Feedback
 
-	if err := json.NewDecoder(r.Body).Decode(&f); err != nil {
+	// 1️⃣ Hent userID fra JWT
+	userIDStr, ok := GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		http.Error(w, "invalid user id", http.StatusBadRequest)
+		return
+	}
+
+	// Find bruger
+	var user models.User
+	if err := h.DB.First(&user, "id = ?", userID).Error; err != nil {
+		http.Error(w, "user not found", http.StatusUnauthorized)
+		return
+	}
+
+
+	if user.DepartmentId == uuid.Nil {
+		http.Error(w, "user has no department", http.StatusBadRequest)
+		return
+	}
+
+	//  Decode body (DTO)
+	var req FeedbackCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	f.Id = uuid.New()
+	// (valgfri validering)
+	if req.Rating < 1 || req.Rating > 5 {
+		http.Error(w, "rating must be between 1 and 5", http.StatusBadRequest)
+		return
+	}
 
+	// 4️⃣ Opret feedback model
+	f := models.Feedback{
+		Id:           uuid.New(),
+		DepartmentId: user.DepartmentId,
+		Rating:       req.Rating,
+		Message:      req.Message, 
+	}
+
+	// 5️⃣ Gem
 	if err := h.DB.Create(&f).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -89,15 +132,15 @@ func (h Feedback) Create(w http.ResponseWriter, r *http.Request) {
 // @Tags         feedback
 // @Accept       json
 // @Produce      json
-// @Param        id        path      string  true  "Feedback ID"
-// @Param        feedback  body      models.Feedback  true  "Feedback"
+// @Param        id        path      string            true  "Feedback ID"
+// @Param        feedback  body      models.Feedback   true  "Feedback"
 // @Success      200  {object}  models.Feedback
 // @Failure      404  {string}  string  "Feedback not found"
 // @Router       /feedback/{id} [put]
 func (h Feedback) Update(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	var feedback models.Feedback
 
+	var feedback models.Feedback
 	if err := h.DB.First(&feedback, "id = ?", id).Error; err != nil {
 		http.Error(w, "Feedback not found", http.StatusNotFound)
 		return
@@ -109,7 +152,6 @@ func (h Feedback) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	feedback.Id, _ = uuid.Parse(id)
-
 	h.DB.Save(&feedback)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -137,8 +179,17 @@ func (h Feedback) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterFeedback adds feedback routes
 func RegisterFeedback(router *mux.Router, h Feedback, prefix string) {
+
+	// GET /api/feedback
 	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix, h.Create).Methods("POST")
+
+	// POST /api/feedback (KRÆVER LOGIN)
+	router.Handle(
+		prefix,
+		AuthMiddleware(http.HandlerFunc(h.Create)),
+	).Methods("POST")
+
+	// CRUD
 	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
 	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")

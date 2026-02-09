@@ -141,9 +141,9 @@ type Feedback struct {
 	Id           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	DepartmentId uuid.UUID `gorm:"type:uuid;not null" json:"department_id"`
 	Rating       int       `gorm:"not null" json:"rating"`
+	Message      *string   `gorm:"type:text" json:"message,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 
-	// Relations
 	Department Department `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
 }
 
