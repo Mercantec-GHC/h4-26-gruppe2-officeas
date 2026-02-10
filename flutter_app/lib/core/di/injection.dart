@@ -1,7 +1,9 @@
 import 'package:get_it/get_it.dart';
 import '../../data/datasources/weather_remote_datasource.dart';
+import '../../data/repositories/ticket_repository.dart';
 import '../../data/repositories/weather_repository_impl.dart';
 import '../../domain/repositories/weather_repository.dart';
+import '../../features/tickets/bloc/tickets_bloc.dart';
 import '../../features/weather/bloc/weather_bloc.dart';
 import '../api/api_client.dart';
 
@@ -72,12 +74,9 @@ Future<void> setupDependencyInjection() async {
     ),
   );
 
-  // TODO: Tilføj flere repositories her efterhånden:
-  // getIt.registerLazySingleton<UserRepository>(
-  //   () => UserRepositoryImpl(
-  //     remoteDataSource: getIt<UserRemoteDataSource>(),
-  //   ),
-  // );
+  getIt.registerLazySingleton<TicketRepository>(
+    () => TicketRepository(),
+  );
 
   // ============================================================
   // BLoCs
@@ -88,6 +87,10 @@ Future<void> setupDependencyInjection() async {
     () => WeatherBloc(
       repository: getIt<WeatherRepository>(),
     ),
+  );
+
+  getIt.registerFactory<TicketsBloc>(
+    () => TicketsBloc(repository: getIt<TicketRepository>()),
   );
 
   // TODO: Tilføj flere BLoCs her efterhånden:

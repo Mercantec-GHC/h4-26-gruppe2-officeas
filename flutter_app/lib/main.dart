@@ -10,11 +10,15 @@ import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
 import 'core/theme/theme.dart';
+import 'core/widgets/it_support_guard.dart';
+import 'features/tickets/bloc/tickets_bloc.dart';
+import 'features/tickets/pages/ticket_list_page.dart';
+import 'features/tickets/pages/create_ticket_page.dart';
 
 /// Main entry point
-/// 
+///
 /// Initialiserer app dependencies og configuration før app starter.
-/// 
+///
 /// Setup steps:
 /// 1. Initialisér app configuration (environment)
 /// 2. Setup dependency injection
@@ -27,7 +31,7 @@ void main() async {
   // TODO: Skift til Environment.production når du deployer til produktion!
   await AppConfig.initialize(Environment.development);
   // await AppConfig.initialize(Environment.production);
-  
+
   // Log hvilket environment vi kører i
   debugPrint('🚀 Starting app in ${AppConfig.instance.environment.name} mode');
   debugPrint('📡 API Base URL: ${AppConfig.instance.apiBaseUrl}');
@@ -41,14 +45,14 @@ void main() async {
 }
 
 /// Tip: Skift environment nemt
-/// 
+///
 /// For at skifte mellem localhost og deployed API, ændre bare Environment i main():
 /// - Development (localhost): Environment.development
 /// - Production (deployed): Environment.production
 /// - Staging (hvis I har det): Environment.staging
 
 /// Root app widget
-/// 
+///
 /// Setup BLoC providers og MaterialApp.
 /// BLoCs injiceres via DI container (getIt).
 class MyApp extends StatelessWidget {
@@ -59,15 +63,12 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         // Auth BLoC - for authentication
-        BlocProvider(
-          create: (context) => AuthBloc(),
-        ),
+        BlocProvider(create: (context) => AuthBloc()),
         // Weather BLoC - injected via DI
         // Factory registration giver os ny instance hver gang
-        BlocProvider(
-          create: (context) => getIt<WeatherBloc>(),
-        ),
-        
+        BlocProvider(create: (context) => getIt<WeatherBloc>()),
+        BlocProvider(create: (context) => getIt<TicketsBloc>()),
+
         // TODO: Tilføj flere BLoCs her efterhånden:
         // BlocProvider(
         //   create: (context) => getIt<LoginBloc>(),
@@ -83,6 +84,9 @@ class MyApp extends StatelessWidget {
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
+              '/tickets': (context) =>
+                  const ItSupportGuard(child: TicketListPage()),
+              '/tickets/new': (context) => const CreateTicketPage(),
               '/navigation': (context) => const MainNavigation(),
             },
           );
@@ -102,10 +106,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _pages = <Widget>[
-    WeatherPage(),
-    InfographicPage(),
-  ];
+  static final List<Widget> _pages = <Widget>[WeatherPage(), InfographicPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -119,10 +120,7 @@ class _MainNavigationState extends State<MainNavigation> {
           });
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.cloud),
-            label: 'Vejr',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.cloud), label: 'Vejr'),
           BottomNavigationBarItem(
             icon: Icon(Icons.info_outline),
             label: 'BLoC',
@@ -132,5 +130,3 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
-
-

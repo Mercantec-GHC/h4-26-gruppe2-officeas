@@ -16,6 +16,12 @@ final appTheme = ThemeData(
     backgroundColor: AppColors.primary,
     foregroundColor: Colors.white,
     elevation: 2,
+    titleTextStyle: TextStyle(
+      fontFamily: 'Arial',
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: Colors.white,
+    ),
   ),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: AppColors.primary,
