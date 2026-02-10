@@ -39,10 +39,10 @@ type RegisterRequest struct {
 }
 
 type SSORequest struct {
-	Provider     string `json:"provider"` // "google" or "github"
-	IDToken      string `json:"id_token"`
-	Email        string `json:"email"`
-	Name         string `json:"name"`
+	Provider     string    `json:"provider"` // "google" or "github"
+	IDToken      string    `json:"id_token"`
+	Email        string    `json:"email"`
+	Name         string    `json:"name"`
 	DepartmentId uuid.UUID `json:"department_id,omitempty"`
 }
 
@@ -52,11 +52,12 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// getJWTSecret retrieves the JWT secret from environment or uses a default (not recommended for production)
+// getJWTSecret retrieves the JWT secret from the JWT_SECRET environment variable.
+// Panics if not set — never fall back to a hardcoded secret.
 func getJWTSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "your-secret-key-change-this-in-production"
+		panic("JWT_SECRET environment variable not set")
 	}
 	return []byte(secret)
 }
@@ -229,7 +230,7 @@ func (h Auth) SSOLogin(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid Google token: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
-		
+
 		// Use verified email and name from Google
 		req.Email = tokenInfo.Email
 		if tokenInfo.Name != "" {
@@ -246,7 +247,7 @@ func (h Auth) SSOLogin(w http.ResponseWriter, r *http.Request) {
 	// Try to find existing user
 	var user models.User
 	err := h.DB.Preload("Department").First(&user, "email = ?", req.Email).Error
-	
+
 	if err == gorm.ErrRecordNotFound {
 		// Create new user for SSO
 		// Use a default department if not provided
@@ -480,4 +481,3 @@ func (h Auth) GitHubCallback(w http.ResponseWriter, r *http.Request) {
 		User:  user,
 	})
 }
-

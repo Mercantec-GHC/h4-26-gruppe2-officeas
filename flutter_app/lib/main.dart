@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
-import 'features/weather/bloc/weather_bloc.dart';
-import 'features/weather/view/weather_page.dart';
-import 'features/infographic/view/infographic_page.dart';
+import 'features/messaging/bloc/messaging_bloc.dart';
+import 'features/messaging/pages/conversations_page.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
@@ -64,15 +63,9 @@ class MyApp extends StatelessWidget {
       providers: [
         // Auth BLoC - for authentication
         BlocProvider(create: (context) => AuthBloc()),
-        // Weather BLoC - injected via DI
-        // Factory registration giver os ny instance hver gang
-        BlocProvider(create: (context) => getIt<WeatherBloc>()),
+        // Messaging BLoC - injected via DI
+        BlocProvider(create: (context) => getIt<MessagingBloc>()),
         BlocProvider(create: (context) => getIt<TicketsBloc>()),
-
-        // TODO: Tilføj flere BLoCs her efterhånden:
-        // BlocProvider(
-        //   create: (context) => getIt<LoginBloc>(),
-        // ),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
@@ -80,7 +73,9 @@ class MyApp extends StatelessWidget {
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated ? const HomePage() : const LoginPage(),
+            home: state is Authenticated
+                ? const MainNavigation()
+                : const LoginPage(),
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
@@ -106,7 +101,10 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  static final List<Widget> _pages = <Widget>[WeatherPage(), InfographicPage()];
+  static final List<Widget> _pages = <Widget>[
+    const HomePage(),
+    const ConversationsPage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -120,10 +118,10 @@ class _MainNavigationState extends State<MainNavigation> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.cloud), label: 'Vejr'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.info_outline),
-            label: 'BLoC',
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Beskeder',
           ),
         ],
       ),
