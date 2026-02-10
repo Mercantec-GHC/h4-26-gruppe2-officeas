@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
+import 'domain/repositories/shift_repository.dart';
 import 'features/messaging/bloc/messaging_bloc.dart';
 import 'features/messaging/pages/conversations_page.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
+import 'features/calendar/pages/calendar_page.dart';
 import 'core/theme/theme.dart';
 import 'core/widgets/it_support_guard.dart';
 import 'features/tickets/bloc/tickets_bloc.dart';
@@ -62,7 +64,14 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         // Auth BLoC - for authentication
-        BlocProvider(create: (context) => AuthBloc()),
+        BlocProvider(
+          create: (context) {
+            final authBloc = AuthBloc();
+            // Setup auth interceptor after AuthBloc is created
+            setupAuthInterceptor(authBloc);
+            return authBloc;
+          },
+        ),
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
         BlocProvider(create: (context) => getIt<TicketsBloc>()),
@@ -83,6 +92,8 @@ class MyApp extends StatelessWidget {
                   const ItSupportGuard(child: TicketListPage()),
               '/tickets/new': (context) => const CreateTicketPage(),
               '/navigation': (context) => const MainNavigation(),
+              '/calendar': (context) =>
+                  CalendarPage(shiftRepository: getIt<ShiftRepository>()),
             },
           );
         },
@@ -104,6 +115,7 @@ class _MainNavigationState extends State<MainNavigation> {
   static final List<Widget> _pages = <Widget>[
     const HomePage(),
     const ConversationsPage(),
+    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
   ];
 
   @override
@@ -117,11 +129,18 @@ class _MainNavigationState extends State<MainNavigation> {
             _selectedIndex = index;
           });
         },
+        backgroundColor: Colors.white,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Colors.black54,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Beskeder',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Kalender',
           ),
         ],
       ),

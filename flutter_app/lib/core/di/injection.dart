@@ -1,6 +1,10 @@
 import 'package:get_it/get_it.dart';
 import '../../data/repositories/ticket_repository.dart';
 import '../../features/tickets/bloc/tickets_bloc.dart';
+import '../../data/datasources/shift_remote_datasource.dart';
+import '../../data/repositories/shift_repository_impl.dart';
+import '../../domain/repositories/shift_repository.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
 import '../../data/datasources/messaging_remote_datasource.dart';
 import '../../features/messaging/bloc/messaging_bloc.dart';
 import '../api/api_client.dart';
@@ -50,6 +54,17 @@ Future<void> setupDependencyInjection() async {
     () => MessagingRemoteDataSource(),
   );
 
+  getIt.registerLazySingleton<ShiftRemoteDataSource>(
+    () => ShiftRemoteDataSource(apiClient: getIt<ApiClient>()),
+  );
+
+  // ============================================================
+  // Repositories
+  // ============================================================
+  getIt.registerLazySingleton<ShiftRepository>(
+    () => ShiftRepositoryImpl(remoteDataSource: getIt<ShiftRemoteDataSource>()),
+  );
+
   getIt.registerLazySingleton<MessagingWebSocketService>(
     () => MessagingWebSocketService(),
   );
@@ -76,6 +91,14 @@ Future<void> setupDependencyInjection() async {
   //     authRepository: getIt<AuthRepository>(),
   //   ),
   // );
+}
+
+/// Setup auth interceptor with AuthBloc
+///
+/// Called from main.dart after AuthBloc is created to inject
+/// the current token provider.
+void setupAuthInterceptor(AuthBloc authBloc) {
+  getIt<ApiClient>().addAuthInterceptor(() async => authBloc.currentToken);
 }
 
 /// Reset dependency injection
