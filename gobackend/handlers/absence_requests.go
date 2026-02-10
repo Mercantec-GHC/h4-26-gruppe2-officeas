@@ -22,6 +22,7 @@ type AbsenceRequests struct {
 // @Tags         absence-requests
 // @Produce      json
 // @Success      200  {array}   models.AbsenceRequest
+// @Security     BearerAuth
 // @Router       /absence-requests [get]
 func (h AbsenceRequests) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.AbsenceRequest
@@ -42,6 +43,7 @@ func (h AbsenceRequests) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Absence Request ID"
 // @Success      200  {object}  models.AbsenceRequest
 // @Failure      404  {string}  string  "absence request not found"
+// @Security     BearerAuth
 // @Router       /absence-requests/{id} [get]
 func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -74,6 +76,7 @@ func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        absenceRequest  body      models.AbsenceRequest  true  "Absence Request"
 // @Success      201  {object}  models.AbsenceRequest
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
 // @Router       /absence-requests [post]
 func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
 	var a models.AbsenceRequest
@@ -108,6 +111,7 @@ func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
 // @Param        absenceRequest  body      models.AbsenceRequest  true  "Absence Request"
 // @Success      200  {object}  models.AbsenceRequest
 // @Failure      404  {string}  string  "absence request not found"
+// @Security     BearerAuth
 // @Router       /absence-requests/{id} [put]
 func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -163,6 +167,7 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Absence Request ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "absence request not found"
+// @Security     BearerAuth
 // @Router       /absence-requests/{id} [delete]
 func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -195,6 +200,7 @@ func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 // @Param        body  body      object  false  "Reviewer ID (optional)"  SchemaExample({"reviewed_by_user_id": "uuid"})
 // @Success      200  {object}  models.AbsenceRequest
 // @Failure      404  {string}  string  "absence request not found"
+// @Security     BearerAuth
 // @Router       /absence-requests/{id}/approve [put]
 func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")

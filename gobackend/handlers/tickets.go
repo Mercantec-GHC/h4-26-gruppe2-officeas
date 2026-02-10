@@ -22,6 +22,8 @@ type Tickets struct {
 // @Tags         tickets
 // @Produce      json
 // @Success      200  {array}   models.Ticket
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets [get]
 func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.Ticket
@@ -42,6 +44,8 @@ func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket ID"
 // @Success      200  {object}  models.Ticket
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [get]
 func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -74,6 +78,8 @@ func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        ticket  body      models.Ticket  true  "Ticket"
 // @Success      201  {object}  models.Ticket
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets [post]
 func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 	var t models.Ticket
@@ -108,6 +114,8 @@ func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 // @Param        ticket  body      models.Ticket  true  "Ticket"
 // @Success      200  {object}  models.Ticket
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [put]
 func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -160,6 +168,8 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [delete]
 func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
