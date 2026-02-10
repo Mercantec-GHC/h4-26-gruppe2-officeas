@@ -105,9 +105,9 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
   static final List<Widget> _pages = <Widget>[
-    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
     const HomePage(),
     const ConversationsPage(),
+    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
   ];
 
   @override
@@ -121,6 +121,9 @@ class _MainNavigationState extends State<MainNavigation> {
             _selectedIndex = index;
           });
         },
+        backgroundColor: Colors.white,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Colors.black54,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
           BottomNavigationBarItem(
@@ -131,7 +134,6 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.calendar_today),
             label: 'Kalender',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.bug_report), label: 'Test'),
         ],
       ),
     );
