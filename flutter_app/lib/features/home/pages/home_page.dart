@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../home/feedback_page.dart';
+import '../calender.dart';
+import '../tickets.dart';
+import '../account.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -13,180 +16,188 @@ class HomePage extends StatelessWidget {
     final user = authBloc.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('OfficeAs'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Logout'),
-                  content: const Text('Are you sure you want to logout?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        authBloc.add(LogoutRequested());
-                      },
-                      child: const Text('Logout'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade50,
-              Colors.white,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          // Top gradient header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0A66FF), Color(0xFF4B7CFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // ---------- CARD ----------
+                // Logo circle
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.shade300,
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.15),
                   ),
+                  child: const Icon(Icons.business, color: Colors.white, size: 36),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.business,
-                        size: 80,
-                        color: Colors.blue.shade700,
-                      ),
-                      const SizedBox(height: 24),
-
-                      Text(
-                        'Welcome to OfficeAs!',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
-                            ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      if (user != null) ...[
-                        Text(
-                          'Hello, ${user.name}!',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(color: Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          user.email,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.grey.shade600),
-                        ),
-                      ],
-
-                      const SizedBox(height: 24),
-
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              color: Colors.green.shade600,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Successfully authenticated',
-                              style: TextStyle(
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ---------- FEEDBACK BUTTON ----------
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.feedback),
-                          label: const Text('Give Feedback'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade700,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const FeedbackPage(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                      Text('Welcome back', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70)),
+                      const SizedBox(height: 4),
+                      Text(user != null ? user.name : 'Guest', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 32),
-
-                Text(
-                  'More features coming soon...',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
+                IconButton(
+                  onPressed: () => authBloc.add(LogoutRequested()),
+                  icon: const Icon(Icons.logout, color: Colors.white),
                 ),
               ],
             ),
+          ),
+
+          // Content area
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Profile / Welcome card
+                    Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AccountPage())),
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 36,
+                                backgroundColor: Colors.blue.shade50,
+                                child: Icon(Icons.person, size: 36, color: Colors.blue.shade700),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(user != null ? user.name : 'Guest', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                                    const SizedBox(height: 6),
+                                    Text(user != null ? user.email : '', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600)),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                          decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
+                                          child: Text('Authenticated', style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        TextButton.icon(
+                                          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FeedbackPage())),
+                                          icon: const Icon(Icons.feedback_outlined, size: 18),
+                                          label: const Text('Give feedback'),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Quick actions
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            Icons.schedule,
+                            'Shifts',
+                            'View upcoming shifts',
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CalenderPage())),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildActionCard(
+                            context,
+                            Icons.confirmation_number,
+                            'Tickets',
+                            'Open/Manage tickets',
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TicketsPage())),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Placeholder for additional content or cards
+                    Material(
+                      elevation: 2,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Announcements', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 8),
+                            Text('More features coming soon — shifts, tickets, departments and more.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade700)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(BuildContext context, IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
+    return Material(
+      color: Colors.white,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap ?? () {},
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(backgroundColor: Colors.blue.shade50, child: Icon(icon, color: Colors.blue.shade700)),
+              const SizedBox(height: 12),
+              Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600)),
+            ],
           ),
         ),
       ),

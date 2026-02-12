@@ -93,7 +93,13 @@ func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
+	// Reload with relations so the response contains CreatedByUser, AssignedToUser and Comments
+	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", t.Id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(t)
