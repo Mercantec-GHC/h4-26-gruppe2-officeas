@@ -1,11 +1,15 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"stuff/handlers"
+	"stuff/internal/messaging"
+	"stuff/internal/security"
 	"stuff/models"
 
 	_ "stuff/docs"
@@ -13,13 +17,17 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"golang.org/x/time/rate"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 // @title           YourOffice API
-// @host      localhost:8080
-// @BasePath  /api
+// @host            localhost:8080
+// @BasePath        /api
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
 
 func runMigrations(db *gorm.DB) error {
 	// AutoMigrate will create tables if they don't exist, or update schema if models changed
@@ -35,14 +43,42 @@ func runMigrations(db *gorm.DB) error {
 		&models.AbsenceRequest{},
 		&models.AbsenceRequestComment{},
 		&models.Notification{},
+		// Messaging module
+		&models.Conversation{},
+		&models.ConversationMember{},
+		&models.Message{},
+		&models.DeviceToken{},
 	)
+}
+
+// allowedOrigins defines the production origins permitted for CORS.
+var allowedOrigins = map[string]bool{
+	"https://h4-flutter.mercantec.tech": true,
+	"https://h4-api.mercantec.tech":     true,
+}
+
+// isAllowedOrigin returns true for any localhost origin (any port, for dev)
+// and for explicitly listed production origins.
+func isAllowedOrigin(origin string) bool {
+	if allowedOrigins[origin] {
+		return true
+	}
+	// Allow any localhost port (Flutter web debug uses a random port)
+	if strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:") {
+		return true
+	}
+	return false
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+		if origin != "" && isAllowedOrigin(origin) {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Vary", "Origin")
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -119,6 +155,33 @@ func main() {
 
 	// Absence request comments (protected)
 	handlers.RegisterAbsenceRequestComments(protectedRouter, handlers.AbsenceRequestComments{DB: db}, "/absence-requests", "/absence-request-comments")
+
+	// -----------------------------------------------------------------------
+	// Messaging module (encrypted, WebSocket-enabled internal messaging)
+	// -----------------------------------------------------------------------
+	encryptor, err := security.NewEncryptorFromBase64(os.Getenv("MESSAGE_ENCRYPTION_KEY"))
+	if err != nil {
+		log.Printf("WARNING: Message encryption not available: %v", err)
+		log.Printf("Set MESSAGE_ENCRYPTION_KEY (base64, 32 bytes) to enable messaging")
+	}
+
+	if encryptor != nil {
+		// Rate limiter: 10 messages per 5 seconds (2/s sustained, burst 10)
+		msgRateLimiter := messaging.NewMessageRateLimiter(rate.Limit(2), 10)
+		auditLogger := messaging.NewAuditLogger()
+		notifier := &messaging.NoopNotificationSender{}
+
+		msgService := messaging.NewService(db, encryptor, msgRateLimiter, auditLogger, notifier)
+		msgHub := messaging.NewHub(msgService, auditLogger)
+		msgService.SetHub(msgHub)
+
+		// Start the hub's event loop in a background goroutine
+		go msgHub.Run()
+
+		msgHandler := handlers.Messaging{Service: msgService, Hub: msgHub}
+		handlers.RegisterMessaging(protectedRouter, router, msgHandler)
+		println("Messaging module initialised")
+	}
 
 	handler := corsMiddleware(router)
 

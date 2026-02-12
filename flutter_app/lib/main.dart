@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
-import 'features/weather/bloc/weather_bloc.dart';
-import 'features/weather/view/weather_page.dart';
-import 'features/infographic/view/infographic_page.dart';
+import 'domain/repositories/shift_repository.dart';
+import 'features/messaging/bloc/messaging_bloc.dart';
+import 'features/messaging/pages/conversations_page.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
+import 'features/calendar/pages/calendar_page.dart';
 import 'core/theme/theme.dart';
 
 /// Main entry point
-/// 
+///
 /// Initialiserer app dependencies og configuration før app starter.
-/// 
+///
 /// Setup steps:
 /// 1. Initialisér app configuration (environment)
 /// 2. Setup dependency injection
@@ -27,7 +28,7 @@ void main() async {
   // TODO: Skift til Environment.production når du deployer til produktion!
   await AppConfig.initialize(Environment.development);
   // await AppConfig.initialize(Environment.production);
-  
+
   // Log hvilket environment vi kører i
   debugPrint('🚀 Starting app in ${AppConfig.instance.environment.name} mode');
   debugPrint('📡 API Base URL: ${AppConfig.instance.apiBaseUrl}');
@@ -41,14 +42,14 @@ void main() async {
 }
 
 /// Tip: Skift environment nemt
-/// 
+///
 /// For at skifte mellem localhost og deployed API, ændre bare Environment i main():
 /// - Development (localhost): Environment.development
 /// - Production (deployed): Environment.production
 /// - Staging (hvis I har det): Environment.staging
 
 /// Root app widget
-/// 
+///
 /// Setup BLoC providers og MaterialApp.
 /// BLoCs injiceres via DI container (getIt).
 class MyApp extends StatelessWidget {
@@ -60,18 +61,15 @@ class MyApp extends StatelessWidget {
       providers: [
         // Auth BLoC - for authentication
         BlocProvider(
-          create: (context) => AuthBloc(),
+          create: (context) {
+            final authBloc = AuthBloc();
+            // Setup auth interceptor after AuthBloc is created
+            setupAuthInterceptor(authBloc);
+            return authBloc;
+          },
         ),
-        // Weather BLoC - injected via DI
-        // Factory registration giver os ny instance hver gang
-        BlocProvider(
-          create: (context) => getIt<WeatherBloc>(),
-        ),
-        
-        // TODO: Tilføj flere BLoCs her efterhånden:
-        // BlocProvider(
-        //   create: (context) => getIt<LoginBloc>(),
-        // ),
+        // Messaging BLoC - injected via DI
+        BlocProvider(create: (context) => getIt<MessagingBloc>()),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
@@ -79,11 +77,15 @@ class MyApp extends StatelessWidget {
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated ? const HomePage() : const LoginPage(),
+            home: state is Authenticated
+                ? const MainNavigation()
+                : const LoginPage(),
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
               '/navigation': (context) => const MainNavigation(),
+              '/calendar': (context) =>
+                  CalendarPage(shiftRepository: getIt<ShiftRepository>()),
             },
           );
         },
@@ -103,8 +105,9 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
   static final List<Widget> _pages = <Widget>[
-    WeatherPage(),
-    InfographicPage(),
+    const HomePage(),
+    const ConversationsPage(),
+    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
   ];
 
   @override
@@ -118,19 +121,21 @@ class _MainNavigationState extends State<MainNavigation> {
             _selectedIndex = index;
           });
         },
+        backgroundColor: Colors.white,
+        selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Colors.black54,
         items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.cloud),
-            label: 'Vejr',
+            icon: Icon(Icons.chat_bubble_outline),
+            label: 'Beskeder',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.info_outline),
-            label: 'BLoC',
+            icon: Icon(Icons.calendar_today),
+            label: 'Kalender',
           ),
         ],
       ),
     );
   }
 }
-
-
