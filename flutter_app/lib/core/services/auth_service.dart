@@ -140,6 +140,11 @@ class AuthService {
     return await _authRepository.getToken();
   }
 
+  // Get stored user data (parsed JSON map) if available
+  Future<Map<String, dynamic>?> getUser() async {
+    return await _authRepository.getUser();
+  }
+
   // Logout
   Future<void> logout() async {
     try {

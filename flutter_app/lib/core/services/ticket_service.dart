@@ -5,8 +5,11 @@ import '../../data/models/ticket_model.dart';
 class TicketService {
   static const String baseUrl = 'http://localhost:8080/api';
 
-  Future<List<TicketModel>> getAllTickets() async {
-    final response = await http.get(Uri.parse('$baseUrl/tickets'));
+  Future<List<TicketModel>> getAllTickets({String? jwt}) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (jwt != null && jwt.isNotEmpty) headers['Authorization'] = 'Bearer $jwt';
+
+    final response = await http.get(Uri.parse('$baseUrl/tickets'), headers: headers);
     if (response.statusCode == 200) {
       final List data = jsonDecode(response.body);
       return data.map((e) => TicketModel.fromJson(e)).toList();

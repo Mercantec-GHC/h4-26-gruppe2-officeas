@@ -34,7 +34,10 @@ class _TicketsPageState extends State<TicketsPage> {
     try {
       final authBloc = context.read<AuthBloc>();
       final jwt = authBloc.currentToken;
-      final list = await _service.getAllTickets();
+      // Debug: ensure we have a token when expected
+      // ignore: avoid_print
+      print('DEBUG: loading tickets with jwt=${jwt != null ? '[REDACTED]' : 'null'}');
+      final list = await _service.getAllTickets(jwt: jwt);
       setState(() {
         _tickets = list;
       });

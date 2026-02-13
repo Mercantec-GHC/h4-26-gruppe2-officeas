@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_response_model.dart';
@@ -108,12 +110,25 @@ class AuthRepository {
   Future<void> _saveAuthData(AuthResponseModel authResponse) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, authResponse.token);
-    await prefs.setString(_userKey, authResponse.user.toJson().toString());
+    // Save user as JSON string for reliable parsing later
+    await prefs.setString(_userKey, jsonEncode(authResponse.user.toJson()));
   }
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
+  }
+
+  Future<Map<String, dynamic>?> getUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userKey);
+    if (raw == null) return null;
+    try {
+      final Map<String, dynamic> parsed = jsonDecode(raw);
+      return parsed;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> isLoggedIn() async {
