@@ -31,7 +31,7 @@ func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -48,23 +48,23 @@ func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
 // @Router       /shifts/{id} [get]
 func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var s models.Shift
-	
+
 	if err := h.DB.Preload("User").First(&s, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "shift not found", http.StatusNotFound)
 			return
 		}
-	
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
 }
@@ -82,19 +82,30 @@ func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Router       /shifts [post]
 func (h Shifts) Create(w http.ResponseWriter, r *http.Request) {
 	var s models.Shift
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	s.Id = uuid.New()
-	
+
 	if err := h.DB.Create(&s).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
+	relatedType := "shift"
+	createNotification(
+		h.DB,
+		s.UserId,
+		"Shift created",
+		"A new shift has been assigned to you",
+		models.NotificationTypeShiftCreated,
+		&s.Id,
+		&relatedType,
+	)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(s)
@@ -114,36 +125,36 @@ func (h Shifts) Create(w http.ResponseWriter, r *http.Request) {
 // @Router       /shifts/{id} [put]
 func (h Shifts) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var s models.Shift
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&s); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	s.Id = id
-	
+
 	result := h.DB.Model(&models.Shift{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"user_id":    s.UserId,
 		"start_time": s.StartTime,
 		"end_time":   s.EndTime,
 	})
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "shift not found", http.StatusNotFound)
 		return
 	}
-	
+
 	h.DB.Preload("User").First(&s, "id = ?", id)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
@@ -160,23 +171,44 @@ func (h Shifts) Update(w http.ResponseWriter, r *http.Request) {
 // @Router       /shifts/{id} [delete]
 func (h Shifts) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
+	var existing models.Shift
+	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "shift not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	result := h.DB.Delete(&models.Shift{}, "id = ?", id)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "shift not found", http.StatusNotFound)
 		return
 	}
-	
+
+	relatedType := "shift"
+	createNotification(
+		h.DB,
+		existing.UserId,
+		"Shift cancelled",
+		"One of your shifts has been cancelled",
+		models.NotificationTypeShiftCancelled,
+		&id,
+		&relatedType,
+	)
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -190,18 +222,18 @@ func (h Shifts) Delete(w http.ResponseWriter, r *http.Request) {
 // @Router       /shifts/user/{userId} [get]
 func (h Shifts) ListByUser(w http.ResponseWriter, r *http.Request) {
 	userId, ok := uuidParam(w, r, "userId")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var list []models.Shift
-	
+
 	if err := h.DB.Preload("User").Where("user_id = ?", userId).Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }

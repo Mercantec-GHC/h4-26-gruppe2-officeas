@@ -156,6 +156,9 @@ func main() {
 	// Absence request comments (protected)
 	handlers.RegisterAbsenceRequestComments(protectedRouter, handlers.AbsenceRequestComments{DB: db}, "/absence-requests", "/absence-request-comments")
 
+	// Notifications (protected)
+	handlers.RegisterNotifications(protectedRouter, handlers.Notifications{DB: db}, "/notifications")
+
 	// -----------------------------------------------------------------------
 	// Messaging module (encrypted, WebSocket-enabled internal messaging)
 	// -----------------------------------------------------------------------

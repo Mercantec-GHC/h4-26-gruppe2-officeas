@@ -26,12 +26,12 @@ type AbsenceRequests struct {
 // @Router       /absence-requests [get]
 func (h AbsenceRequests) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.AbsenceRequest
-	
+
 	if err := h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -47,23 +47,23 @@ func (h AbsenceRequests) List(w http.ResponseWriter, r *http.Request) {
 // @Router       /absence-requests/{id} [get]
 func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var a models.AbsenceRequest
-	
+
 	if err := h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request not found", http.StatusNotFound)
 			return
 		}
-	
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(a)
 }
@@ -80,23 +80,23 @@ func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Router       /absence-requests [post]
 func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
 	var a models.AbsenceRequest
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	a.Id = uuid.New()
-	
+
 	if a.Status == "" {
 		a.Status = models.RequestStatusPending
 	}
-	
+
 	if err := h.DB.Create(&a).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(a)
@@ -115,48 +115,85 @@ func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
 // @Router       /absence-requests/{id} [put]
 func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
+	var existing models.AbsenceRequest
+	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "absence request not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var a models.AbsenceRequest
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	a.Id = id
-	
+
 	updates := map[string]interface{}{
-		"user_id":     a.UserId,
-		"type":        a.Type,
-		"start_date":  a.StartDate,
-		"end_date":    a.EndDate,
-		"shift_id":    a.ShiftId,
-		"status":      a.Status,
+		"user_id":             a.UserId,
+		"type":                a.Type,
+		"start_date":          a.StartDate,
+		"end_date":            a.EndDate,
+		"shift_id":            a.ShiftId,
+		"status":              a.Status,
 		"reviewed_by_user_id": a.ReviewedByUserId,
 	}
-	
+
 	if a.Status == models.RequestStatusApproved || a.Status == models.RequestStatusRejected {
 		now := time.Now()
 		updates["reviewed_at"] = &now
 	}
-	
+
 	result := h.DB.Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "absence request not found", http.StatusNotFound)
 		return
 	}
-	
+
 	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
+
+	if existing.Status != a.Status {
+		relatedType := "absence_request"
+		switch a.Status {
+		case models.RequestStatusApproved:
+			createNotification(
+				h.DB,
+				a.UserId,
+				"Absence request approved",
+				"Your absence request has been approved",
+				models.NotificationTypeAbsenceApproved,
+				&a.Id,
+				&relatedType,
+			)
+		case models.RequestStatusRejected:
+			createNotification(
+				h.DB,
+				a.UserId,
+				"Absence request rejected",
+				"Your absence request has been rejected",
+				models.NotificationTypeAbsenceRejected,
+				&a.Id,
+				&relatedType,
+			)
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(a)
 }
@@ -171,23 +208,23 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 // @Router       /absence-requests/{id} [delete]
 func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	result := h.DB.Delete(&models.AbsenceRequest{}, "id = ?", id)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "absence request not found", http.StatusNotFound)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -204,55 +241,67 @@ func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 // @Router       /absence-requests/{id}/approve [put]
 func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	// Check if request exists
 	var a models.AbsenceRequest
-	
+
 	if err := h.DB.First(&a, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request not found", http.StatusNotFound)
 			return
 		}
-		
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Parse optional reviewed_by_user_id from body
 	var body struct {
 		ReviewedByUserId *uuid.UUID `json:"reviewed_by_user_id"`
 	}
-	
+
 	// Body is optional, so ignore decode errors
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	
+
 	now := time.Now()
 	updates := map[string]interface{}{
 		"status":      models.RequestStatusApproved,
 		"reviewed_at": &now,
 	}
-	
+
 	if body.ReviewedByUserId != nil {
 		updates["reviewed_by_user_id"] = body.ReviewedByUserId
 	}
-	
+
 	result := h.DB.Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "absence request not found", http.StatusNotFound)
 		return
 	}
-	
+
 	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
+	if a.UserId != uuid.Nil {
+		relatedType := "absence_request"
+		createNotification(
+			h.DB,
+			a.UserId,
+			"Absence request approved",
+			"Your absence request has been approved",
+			models.NotificationTypeAbsenceApproved,
+			&a.Id,
+			&relatedType,
+		)
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(a)
 }
