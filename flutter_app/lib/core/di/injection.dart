@@ -1,4 +1,6 @@
 import 'package:get_it/get_it.dart';
+import '../../data/repositories/ticket_repository.dart';
+import '../../features/tickets/bloc/tickets_bloc.dart';
 import '../../data/datasources/shift_remote_datasource.dart';
 import '../../data/repositories/shift_repository_impl.dart';
 import '../../domain/repositories/shift_repository.dart';
@@ -67,6 +69,8 @@ Future<void> setupDependencyInjection() async {
     () => MessagingWebSocketService(),
   );
 
+  getIt.registerLazySingleton<TicketRepository>(() => TicketRepository());
+
   // ============================================================
   // BLoCs
   // ============================================================
@@ -76,6 +80,17 @@ Future<void> setupDependencyInjection() async {
       wsService: getIt<MessagingWebSocketService>(),
     ),
   );
+
+  getIt.registerFactory<TicketsBloc>(
+    () => TicketsBloc(repository: getIt<TicketRepository>()),
+  );
+
+  // TODO: Tilføj flere BLoCs her efterhånden:
+  // getIt.registerFactory<LoginBloc>(
+  //   () => LoginBloc(
+  //     authRepository: getIt<AuthRepository>(),
+  //   ),
+  // );
 }
 
 /// Setup auth interceptor with AuthBloc

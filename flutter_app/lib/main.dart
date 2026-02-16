@@ -12,6 +12,10 @@ import 'features/home/pages/home_page.dart';
 import 'features/calendar/pages/calendar_page.dart';
 import 'features/notifications/pages/notifications_page.dart';
 import 'core/theme/theme.dart';
+import 'core/widgets/it_support_guard.dart';
+import 'features/tickets/bloc/tickets_bloc.dart';
+import 'features/tickets/pages/ticket_list_page.dart';
+import 'features/tickets/pages/create_ticket_page.dart';
 
 /// Main entry point
 ///
@@ -71,6 +75,7 @@ class MyApp extends StatelessWidget {
         ),
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
+        BlocProvider(create: (context) => getIt<TicketsBloc>()),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
@@ -84,6 +89,9 @@ class MyApp extends StatelessWidget {
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
+              '/tickets': (context) =>
+                  const ItSupportGuard(child: TicketListPage()),
+              '/tickets/new': (context) => const CreateTicketPage(),
               '/navigation': (context) => const MainNavigation(),
               '/calendar': (context) =>
                   CalendarPage(shiftRepository: getIt<ShiftRepository>()),
