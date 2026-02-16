@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../../domain/entities/shift_entity.dart';
+import '../../../domain/entities/absence_request_entity.dart';
 import '../../../domain/repositories/shift_repository.dart';
+import '../../../domain/repositories/absence_request_repository.dart';
+import '../../../features/auth/bloc/auth_bloc.dart';
+import '../dialogs/create_absence_request_dialog.dart';
 
 class CalendarPage extends StatefulWidget {
   final ShiftRepository shiftRepository;
+  final AbsenceRequestRepository absenceRequestRepository;
 
   const CalendarPage({
     super.key,
     required this.shiftRepository,
+    required this.absenceRequestRepository,
   });
 
   @override
@@ -21,6 +28,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime? _endDate;
   late DateTime _focusedDate;
   List<ShiftEntity> _shifts = [];
+  List<AbsenceRequestEntity> _absenceRequests = [];
   bool _isLoading = false;
 
   @override
@@ -30,6 +38,7 @@ class _CalendarPageState extends State<CalendarPage> {
     _endDate = null;
     _focusedDate = DateTime.now();
     _loadShifts();
+    _loadAbsenceRequests();
   }
 
   /// Load shifts from database
@@ -61,6 +70,30 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
+  /// Load absence requests from database
+  Future<void> _loadAbsenceRequests() async {
+    final result = await widget.absenceRequestRepository.getAllAbsenceRequests();
+
+    if (mounted) {
+      result.when(
+        success: (absenceRequests) {
+          setState(() {
+            _absenceRequests = absenceRequests;
+          });
+        },
+        failure: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Fejl ved indlæsning af absence requests: ${error.message}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        },
+      );
+    }
+  }
+
   /// Get shifts for a specific date
   List<ShiftEntity> _getShiftsForDate(DateTime date) {
     return _shifts.where((shift) {
@@ -80,6 +113,40 @@ class _CalendarPageState extends State<CalendarPage> {
     }).toList();
   }
 
+  /// Show absence request dialog
+  void _showAbsenceRequestDialog() {
+    final userId = context.read<AuthBloc>().currentUser?.id ?? '';
+    
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not found. Please log in again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => CreateAbsenceRequestDialog(
+        absenceRequestRepository: widget.absenceRequestRepository,
+        userId: userId,
+        selectedStartDate: _startDate,
+        selectedEndDate: _endDate,
+        onAbsenceRequestCreated: (absenceRequest) {
+          setState(() {
+            _absenceRequests.add(absenceRequest);
+            _startDate = null;
+            _endDate = null;
+          });
+          _loadAbsenceRequests(); // Reload to get latest data
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -91,8 +158,11 @@ class _CalendarPageState extends State<CalendarPage> {
           // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadShifts,
-            tooltip: 'Refresh shifts',
+            onPressed: _isLoading ? null : () {
+              _loadShifts();
+              _loadAbsenceRequests();
+            },
+            tooltip: 'Refresh shifts and absence requests',
           ),
         ],
       ),
@@ -297,6 +367,20 @@ class _CalendarPageState extends State<CalendarPage> {
                                         ),
                                       ),
                                     ),
+                                    const SizedBox(height: 6.0),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: _showAbsenceRequestDialog,
+                                        icon: const Icon(Icons.event_busy, size: 16),
+                                        label: const Text('Request Absence'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange.shade600,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ],
                               ),
@@ -352,6 +436,30 @@ class _CalendarPageState extends State<CalendarPage> {
                                 ),
                               ),
                             ],
+                            // Display your absence requests
+                            const SizedBox(height: 12.0),
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                border: Border.all(color: Colors.red.shade300),
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your Absence Requests:',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  _buildAbsenceRequestsList(),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -360,6 +468,118 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ],
             ),
+    );
+  }
+
+  /// Build absence requests list widget
+  Widget _buildAbsenceRequestsList() {
+    if (_absenceRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            'No absence requests',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _absenceRequests.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 6.0),
+      itemBuilder: (context, index) {
+        final request = _absenceRequests[index];
+        return _buildAbsenceRequestCard(request);
+      },
+    );
+  }
+
+  /// Build a single absence request card
+  Widget _buildAbsenceRequestCard(AbsenceRequestEntity request) {
+    final statusColor = switch (request.status) {
+      AbsenceRequestStatus.pending => Colors.orange,
+      AbsenceRequestStatus.approved => Colors.green,
+      AbsenceRequestStatus.rejected => Colors.red,
+    };
+
+    return Card(
+      elevation: 2.0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4.0),
+        side: BorderSide(color: statusColor, width: 2.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with type and status badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.type.displayName,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        'Requested: ${DateFormat('MMM d, yyyy').format(request.createdAt)}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Colors.grey.shade700,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.2),
+                    border: Border.all(color: statusColor),
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
+                  child: Text(
+                    request.status.displayName,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6.0),
+            // Date range
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                const SizedBox(width: 4.0),
+                Expanded(
+                  child: Text(
+                    '${DateFormat('MMM d').format(request.startDate)} - ${DateFormat('MMM d, yyyy').format(request.endDate)} (${request.durationInDays} days)',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
