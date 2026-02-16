@@ -22,15 +22,17 @@ type Tickets struct {
 // @Tags         tickets
 // @Produce      json
 // @Success      200  {array}   models.Ticket
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets [get]
 func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.Ticket
-	
+
 	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -42,26 +44,28 @@ func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket ID"
 // @Success      200  {object}  models.Ticket
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [get]
 func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var t models.Ticket
-	
+
 	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "ticket not found", http.StatusNotFound)
 			return
 		}
-	
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(t)
 }
@@ -74,26 +78,41 @@ func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        ticket  body      models.Ticket  true  "Ticket"
 // @Success      201  {object}  models.Ticket
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets [post]
 func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 	var t models.Ticket
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	t.Id = uuid.New()
-	
+
 	if t.Status == "" {
 		t.Status = models.TicketStatusOpen
 	}
-	
+
 	if err := h.DB.Create(&t).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
+	if t.AssignedToUserId != nil {
+		relatedType := "ticket"
+		createNotification(
+			h.DB,
+			*t.AssignedToUserId,
+			"Ticket assigned",
+			"You were assigned to ticket: "+t.Title,
+			models.NotificationTypeTicketAssigned,
+			&t.Id,
+			&relatedType,
+		)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(t)
@@ -108,48 +127,98 @@ func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 // @Param        ticket  body      models.Ticket  true  "Ticket"
 // @Success      200  {object}  models.Ticket
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [put]
 func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
+	var existing models.Ticket
+	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "ticket not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	var t models.Ticket
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	t.Id = id
-	
+
 	updates := map[string]interface{}{
-		"title":                 t.Title,
-		"description":           t.Description,
-		"status":                t.Status,
-		"assigned_to_user_id":   t.AssignedToUserId,
+		"title":               t.Title,
+		"description":         t.Description,
+		"status":              t.Status,
+		"assigned_to_user_id": t.AssignedToUserId,
 	}
-	
+
 	if t.Status == models.TicketStatusResolved || t.Status == models.TicketStatusClosed {
 		now := time.Now()
 		updates["resolved_at"] = &now
 	}
-	
+
 	result := h.DB.Model(&models.Ticket{}).Where("id = ?", id).Updates(updates)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "ticket not found", http.StatusNotFound)
 		return
 	}
-	
+
 	h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id)
+
+	relatedType := "ticket"
+	if t.AssignedToUserId != nil {
+		if existing.AssignedToUserId == nil || *existing.AssignedToUserId != *t.AssignedToUserId {
+			createNotification(
+				h.DB,
+				*t.AssignedToUserId,
+				"Ticket assigned",
+				"You were assigned to ticket: "+t.Title,
+				models.NotificationTypeTicketAssigned,
+				&t.Id,
+				&relatedType,
+			)
+		} else {
+			createNotification(
+				h.DB,
+				*t.AssignedToUserId,
+				"Ticket updated",
+				"Ticket was updated: "+t.Title,
+				models.NotificationTypeTicketUpdated,
+				&t.Id,
+				&relatedType,
+			)
+		}
+	}
+
+	if t.CreatedByUserId != uuid.Nil && (t.AssignedToUserId == nil || t.CreatedByUserId != *t.AssignedToUserId) {
+		createNotification(
+			h.DB,
+			t.CreatedByUserId,
+			"Ticket updated",
+			"Ticket was updated: "+t.Title,
+			models.NotificationTypeTicketUpdated,
+			&t.Id,
+			&relatedType,
+		)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(t)
 }
@@ -160,26 +229,28 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "Ticket ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "ticket not found"
+// @Security     BearerAuth
+// @Security     BearerAuth
 // @Router       /tickets/{id} [delete]
 func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	result := h.DB.Delete(&models.Ticket{}, "id = ?", id)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "ticket not found", http.StatusNotFound)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -1,10 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../data/datasources/notifications_remote_datasource.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final NotificationsRemoteDataSource _notificationsDataSource =
+      NotificationsRemoteDataSource();
+  late Future<int> _unreadCountFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _unreadCountFuture = _notificationsDataSource.getUnreadCount();
+  }
+
+  void _refreshUnreadCount() {
+    setState(() {
+      _unreadCountFuture = _notificationsDataSource.getUnreadCount();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +39,37 @@ class HomePage extends StatelessWidget {
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
         actions: [
+          FutureBuilder<int>(
+            future: _unreadCountFuture,
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none),
+                    tooltip: 'Notifikationer',
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/notifications');
+                      _refreshUnreadCount();
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 10,
+                      top: 10,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -50,10 +103,7 @@ class HomePage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade50,
-              Colors.white,
-            ],
+            colors: [Colors.blue.shade50, Colors.white],
           ),
         ),
         child: Center(
@@ -85,7 +135,8 @@ class HomePage extends StatelessWidget {
                       const SizedBox(height: 24),
                       Text(
                         'Welcome to OfficeAs!',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.blue.shade700,
                             ),
@@ -94,16 +145,14 @@ class HomePage extends StatelessWidget {
                       if (user != null) ...[
                         Text(
                           'Hello, ${user.name}!',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: Colors.grey.shade700,
-                              ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(color: Colors.grey.shade700),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           user.email,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey.shade600,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey.shade600),
                         ),
                       ],
                       const SizedBox(height: 24),
@@ -139,9 +188,9 @@ class HomePage extends StatelessWidget {
                 Text(
                   'More features coming soon...',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),

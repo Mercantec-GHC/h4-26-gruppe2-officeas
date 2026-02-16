@@ -63,6 +63,8 @@ const (
 	NotificationTypeShiftCancelled     NotificationType = "SHIFT_CANCELLED"
 	NotificationTypeFeedbackReceived   NotificationType = "FEEDBACK_RECEIVED"
 	NotificationTypeSystemAnnouncement NotificationType = "SYSTEM_ANNOUNCEMENT"
+	NotificationTypeMessageReceived    NotificationType = "MESSAGE_RECEIVED"
+	NotificationTypeConversationAdded  NotificationType = "CONVERSATION_ADDED"
 )
 
 func (nt NotificationType) String() string {

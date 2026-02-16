@@ -22,6 +22,7 @@ type Users struct {
 // @Tags         users
 // @Produce      json
 // @Success      200  {array}   models.User
+// @Security     BearerAuth
 // @Router       /users [get]
 func (h Users) List(w http.ResponseWriter, r *http.Request) {
 	var list []models.User
@@ -42,6 +43,7 @@ func (h Users) List(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "User ID"
 // @Success      200  {object}  models.User
 // @Failure      404  {string}  string  "user not found"
+// @Security     BearerAuth
 // @Router       /users/{id} [get]
 func (h Users) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -74,6 +76,7 @@ func (h Users) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Param        user  body      models.User  true  "User"
 // @Success      201  {object}  models.User
 // @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
 // @Router       /users [post]
 func (h Users) Create(w http.ResponseWriter, r *http.Request) {
 	// Expect plaintext password in request; hash it before storing
@@ -122,6 +125,7 @@ func (h Users) Create(w http.ResponseWriter, r *http.Request) {
 // @Param        user  body      models.User  true  "User"
 // @Success      200  {object}  models.User
 // @Failure      404  {string}  string  "user not found"
+// @Security     BearerAuth
 // @Router       /users/{id} [put]
 func (h Users) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
@@ -168,6 +172,7 @@ func (h Users) Update(w http.ResponseWriter, r *http.Request) {
 // @Param        id   path      string  true  "User ID"
 // @Success      204  "No Content"
 // @Failure      404  {string}  string  "user not found"
+// @Security     BearerAuth
 // @Router       /users/{id} [delete]
 func (h Users) Delete(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
