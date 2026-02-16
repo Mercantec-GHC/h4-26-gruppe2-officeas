@@ -10,6 +10,7 @@ import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/calendar/pages/calendar_page.dart';
+import 'features/notifications/pages/notifications_page.dart';
 import 'core/theme/theme.dart';
 
 /// Main entry point
@@ -86,6 +87,7 @@ class MyApp extends StatelessWidget {
               '/navigation': (context) => const MainNavigation(),
               '/calendar': (context) =>
                   CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+              '/notifications': (context) => const NotificationsPage(),
             },
           );
         },
@@ -108,6 +110,7 @@ class _MainNavigationState extends State<MainNavigation> {
     const HomePage(),
     const ConversationsPage(),
     CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+    const NotificationsPage(),
   ];
 
   @override
@@ -133,6 +136,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
             label: 'Kalender',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_none),
+            label: 'Notifikationer',
           ),
         ],
       ),

@@ -1,0 +1,2 @@
+-- PostgreSQL enum values cannot be removed safely in-place.
+-- Down migration intentionally left as a no-op.

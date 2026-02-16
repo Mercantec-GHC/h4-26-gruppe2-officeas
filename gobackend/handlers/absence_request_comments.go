@@ -30,14 +30,14 @@ func (h AbsenceRequestComments) ListByAbsenceRequest(w http.ResponseWriter, r *h
 	if !ok {
 		return
 	}
-	
+
 	var list []models.AbsenceRequestComment
-	
+
 	if err := h.DB.Preload("User").Where("absence_request_id = ?", absenceRequestId).Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(list)
 }
@@ -55,26 +55,41 @@ func (h AbsenceRequestComments) ListByAbsenceRequest(w http.ResponseWriter, r *h
 // @Router       /absence-requests/{absenceRequestId}/comments [post]
 func (h AbsenceRequestComments) CreateOnAbsenceRequest(w http.ResponseWriter, r *http.Request) {
 	absenceRequestId, ok := uuidParam(w, r, "absenceRequestId")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var c models.AbsenceRequestComment
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	c.Id = uuid.New()
 	c.AbsenceRequestId = absenceRequestId
-	
+
 	if err := h.DB.Create(&c).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
+	var req models.AbsenceRequest
+	if err := h.DB.First(&req, "id = ?", absenceRequestId).Error; err == nil {
+		relatedType := "absence_request"
+		createNotifications(
+			h.DB,
+			[]uuid.UUID{req.UserId},
+			&c.UserId,
+			"New absence request comment",
+			"A new comment was added to your absence request",
+			models.NotificationTypeAbsenceCommented,
+			&absenceRequestId,
+			&relatedType,
+		)
+	}
+
 	h.DB.Preload("User").Preload("AbsenceRequest").First(&c, "id = ?", c.Id)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -92,23 +107,23 @@ func (h AbsenceRequestComments) CreateOnAbsenceRequest(w http.ResponseWriter, r 
 // @Router       /absence-request-comments/{id} [get]
 func (h AbsenceRequestComments) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var c models.AbsenceRequestComment
-	
+
 	if err := h.DB.Preload("User").Preload("AbsenceRequest").First(&c, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request comment not found", http.StatusNotFound)
 			return
 		}
-	
+
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(c)
 }
@@ -126,31 +141,31 @@ func (h AbsenceRequestComments) GetByID(w http.ResponseWriter, r *http.Request) 
 // @Router       /absence-request-comments/{id} [put]
 func (h AbsenceRequestComments) Update(w http.ResponseWriter, r *http.Request) {
 	id, ok := uuidParam(w, r, "id")
-	
+
 	if !ok {
 		return
 	}
-	
+
 	var c models.AbsenceRequestComment
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	c.Id = id
 	result := h.DB.Model(&models.AbsenceRequestComment{}).Where("id = ?", id).Update("content", c.Content)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "absence request comment not found", http.StatusNotFound)
 		return
 	}
-	
+
 	h.DB.Preload("User").Preload("AbsenceRequest").First(&c, "id = ?", id)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(c)
@@ -170,19 +185,19 @@ func (h AbsenceRequestComments) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	
+
 	result := h.DB.Delete(&models.AbsenceRequestComment{}, "id = ?", id)
-	
+
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if result.RowsAffected == 0 {
 		http.Error(w, "absence request comment not found", http.StatusNotFound)
 		return
 	}
-	
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -239,11 +239,29 @@ func (s *Service) SendMessage(senderID uuid.UUID, conversationID uuid.UUID, cont
 		}
 		s.hub.BroadcastToUsers(memberIDs, event)
 
-		// Notify offline members
+		relatedType := "conversation"
+		relatedID := conversationID
+
+		// Notify members
 		for _, uid := range memberIDs {
 			if uid == senderID {
 				continue
 			}
+
+			notification := models.Notification{
+				Id:                uuid.New(),
+				UserId:            uid,
+				Title:             "New message",
+				Message:           sender.Name + ": " + preview,
+				Type:              models.NotificationTypeMessageReceived,
+				CreatedAt:         now,
+				RelatedEntityId:   &relatedID,
+				RelatedEntityType: &relatedType,
+			}
+			if err := s.db.Create(&notification).Error; err != nil {
+				log.Printf("[NOTIFICATION] failed to persist message notification | user=%s err=%v", uid, err)
+			}
+
 			if !s.hub.IsOnline(uid) {
 				_ = s.notifier.SendPush(uid, "New Message", sender.Name+": "+preview)
 			}
