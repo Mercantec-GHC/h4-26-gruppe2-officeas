@@ -125,14 +125,14 @@ class _MainNavigationState extends State<MainNavigation> {
         selectedItemColor: Theme.of(context).colorScheme.primary,
         unselectedItemColor: Colors.black54,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
-            label: 'Beskeder',
+            label: 'Messages',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
-            label: 'Kalender',
+            label: 'Calendar',
           ),
         ],
       ),
