@@ -29,7 +29,7 @@ class TicketRepository {
   }
 
   Future<List<TicketModel>> getTickets() async {
-    final response = await _dio.get('tickets');
+    final response = await _dio.get('/tickets');
 
     if (response.data is! List) throw Exception('Expected list of tickets');
 
@@ -39,7 +39,7 @@ class TicketRepository {
   }
 
   Future<TicketModel> getTicketById(String id) async {
-    final response = await _dio.get('tickets/$id');
+    final response = await _dio.get('/tickets/$id');
 
     return TicketModel.fromJson(response.data as Map<String, dynamic>);
   }
@@ -59,7 +59,7 @@ class TicketRepository {
     if (assignedToUserId != null)
       body['assigned_to_user_id'] = assignedToUserId;
 
-    final response = await _dio.post('tickets', data: body);
+    final response = await _dio.post('/tickets', data: body);
     return TicketModel.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -79,13 +79,13 @@ class TicketRepository {
       'assigned_to_user_id': assignedToUserId ?? current.assignedToUserId,
     };
 
-    final response = await _dio.put('tickets/$id', data: body);
+    final response = await _dio.put('/tickets/$id', data: body);
 
     return TicketModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<void> deleteTicket(String id) async {
-    await _dio.delete('tickets/$id');
+    await _dio.delete('/tickets/$id');
   }
 
   Future<List<TicketCommentModel>> getComments(String ticketId) async {
@@ -104,7 +104,7 @@ class TicketRepository {
     required String content,
   }) async {
     final response = await _dio.post(
-      'tickets/$ticketId/comments',
+      '/tickets/$ticketId/comments',
       data: {'user_id': userId, 'content': content},
     );
 

@@ -32,7 +32,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final isLoggedIn = await _authService.isLoggedIn();
       if (isLoggedIn) {
         final token = await _authService.getToken();
-        if (token != null) {
+        final hasUser = await _authService.hasStoredUser();
+        // Only attempt to restore auth if we have both token and stored user data
+        if (token != null && hasUser) {
           _currentToken = token;
           add(CheckAuthStatus());
         }
@@ -127,9 +129,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (isLoggedIn) {
         final token = await _authService.getToken();
         if (token != null) {
-          // If we have a token, mark as authenticated
-          // Note: User data could be fetched from backend here if needed
-          emit(Authenticated(user: _currentUser ?? UserModel.empty(), token: token));
+          // Only restore to Authenticated if we also have a current user loaded
+          if (_currentUser != null) {
+            emit(Authenticated(user: _currentUser!, token: token));
+          } else {
+            emit(Unauthenticated());
+          }
         } else {
           emit(Unauthenticated());
         }
