@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_web_plugins/url_strategy.dart'
+    if (dart.library.io) 'core/config/url_strategy_stub.dart' as url_strategy;
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'domain/repositories/shift_repository.dart';
@@ -19,9 +21,9 @@ import 'features/tickets/pages/ticket_list_page.dart';
 import 'features/tickets/pages/create_ticket_page.dart';
 
 /// Main entry point
-/// 
+///
 /// Initialiserer app dependencies og configuration før app starter.
-/// 
+///
 /// Setup steps:
 /// 1. Initialisér app configuration (environment)
 /// 2. Setup dependency injection
@@ -30,11 +32,14 @@ void main() async {
   // Sikr at Flutter bindings er initialiseret
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Path-based URLs on web (e.g. /home instead of #/home)
+  url_strategy.usePathUrlStrategy();
+
   // 1. Initialisér App Configuration
   // TODO: Skift til Environment.production når du deployer til produktion!
   await AppConfig.initialize(Environment.development);
   // await AppConfig.initialize(Environment.production);
-  
+
   // Log hvilket environment vi kører i
   debugPrint('🚀 Starting app in ${AppConfig.instance.environment.name} mode');
   debugPrint('📡 API Base URL: ${AppConfig.instance.apiBaseUrl}');
@@ -48,14 +53,14 @@ void main() async {
 }
 
 /// Tip: Skift environment nemt
-/// 
+///
 /// For at skifte mellem localhost og deployed API, ændre bare Environment i main():
 /// - Development (localhost): Environment.development
 /// - Production (deployed): Environment.production
 /// - Staging (hvis I har det): Environment.staging
 
 /// Root app widget
-/// 
+///
 /// Setup BLoC providers og MaterialApp.
 /// BLoCs injiceres via DI container (getIt).
 class MyApp extends StatelessWidget {
@@ -77,7 +82,7 @@ class MyApp extends StatelessWidget {
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
         BlocProvider(create: (context) => getIt<TicketsBloc>()),
-        
+
         // TODO: Tilføj flere BLoCs her efterhånden:
         // BlocProvider(
         //   create: (context) => getIt<LoginBloc>(),
@@ -85,18 +90,23 @@ class MyApp extends StatelessWidget {
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
+          final isAuthenticated = state is Authenticated;
           return MaterialApp(
+            key: ValueKey(isAuthenticated),
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated ? const MainNavigation(initialIndex: 0) : const LoginPage(),
-            initialRoute: state is Authenticated ? '/home' : null,
+            home: isAuthenticated
+                ? const MainNavigation(initialIndex: 0)
+                : const LoginPage(),
+            initialRoute: isAuthenticated ? '/home' : null,
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const MainNavigation(initialIndex: 0),
               '/messages': (context) => const MainNavigation(initialIndex: 1),
               '/calendar': (context) => const MainNavigation(initialIndex: 2),
-              '/notifications': (context) => const MainNavigation(initialIndex: 3),
+              '/notifications': (context) =>
+                  const MainNavigation(initialIndex: 3),
               '/tickets': (context) =>
                   const ItSupportGuard(child: TicketListPage()),
               '/tickets/new': (context) => const CreateTicketPage(),
@@ -110,12 +120,7 @@ class MyApp extends StatelessWidget {
 }
 
 /// Route paths for bottom bar tabs (so e.g. /calendar opens calendar tab).
-const _tabRoutes = [
-  '/home',
-  '/messages',
-  '/calendar',
-  '/notifications',
-];
+const _tabRoutes = ['/home', '/messages', '/calendar', '/notifications'];
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key, this.initialIndex = 0});
@@ -162,10 +167,9 @@ class _MainNavigationState extends State<MainNavigation> {
         currentIndex: _selectedIndex,
         onTap: (index) {
           if (index == _selectedIndex) return;
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            _tabRoutes[index],
-            (route) => false,
-          );
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(_tabRoutes[index], (route) => false);
         },
         backgroundColor: Colors.white,
         selectedItemColor: Theme.of(context).colorScheme.primary,
@@ -189,5 +193,3 @@ class _MainNavigationState extends State<MainNavigation> {
     );
   }
 }
-
-
