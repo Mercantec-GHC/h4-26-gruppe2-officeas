@@ -28,13 +28,7 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
 
       final user = context.read<AuthBloc>().currentUser;
 
-      if (!isItSupportDepartment(user)) {
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/home', (route) => false);
-
-        return;
-      }
+      final canEdit = isItSupportDepartment(user);
       context.read<TicketsBloc>().add(LoadTicketDetail(widget.ticketId));
     });
   }
@@ -78,12 +72,14 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (state is TicketDetailLoaded) {
-            return _DetailContent(
-              ticket: state.ticket,
-              commentController: _commentController,
-              onStatusChanged: (status) => context.read<TicketsBloc>().add(
-                UpdateTicketStatus(ticketId: widget.ticketId, status: status),
-              ),
+              final canEdit = isItSupportDepartment(context.read<AuthBloc>().currentUser);
+              return _DetailContent(
+                ticket: state.ticket,
+                commentController: _commentController,
+                canChangeStatus: canEdit,
+                onStatusChanged: (status) => context.read<TicketsBloc>().add(
+                  UpdateTicketStatus(ticketId: widget.ticketId, status: status),
+                ),
               onSendComment: () {
                 final userId = context.read<AuthBloc>().currentUser?.id;
 
@@ -105,9 +101,11 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
           }
 
           if (state is TicketUpdateSuccess) {
+            final canEdit = isItSupportDepartment(context.read<AuthBloc>().currentUser);
             return _DetailContent(
               ticket: state.ticket,
               commentController: _commentController,
+              canChangeStatus: canEdit,
               onStatusChanged: (status) => context.read<TicketsBloc>().add(
                 UpdateTicketStatus(ticketId: widget.ticketId, status: status),
               ),
@@ -131,9 +129,11 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
             );
           }
           if (state is CommentAddSuccess) {
+            final canEdit = isItSupportDepartment(context.read<AuthBloc>().currentUser);
             return _DetailContent(
               ticket: state.ticket,
               commentController: _commentController,
+              canChangeStatus: canEdit,
               onStatusChanged: (status) => context.read<TicketsBloc>().add(
                 UpdateTicketStatus(ticketId: widget.ticketId, status: status),
               ),
@@ -168,12 +168,14 @@ class _DetailContent extends StatelessWidget {
   final TicketModel ticket;
   final TextEditingController commentController;
   final ValueChanged<String> onStatusChanged;
+  final bool canChangeStatus;
   final VoidCallback onSendComment;
 
   const _DetailContent({
     required this.ticket,
     required this.commentController,
     required this.onStatusChanged,
+    required this.canChangeStatus,
     required this.onSendComment,
   });
 
@@ -237,7 +239,7 @@ class _DetailContent extends StatelessWidget {
                       ),
                     )
                     .toList(),
-                onChanged: (s) => s != null ? onStatusChanged(s) : null,
+                onChanged: canChangeStatus ? (s) => s != null ? onStatusChanged(s) : null : null,
               ),
             ],
           ),

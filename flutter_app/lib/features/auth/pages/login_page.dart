@@ -99,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                                         Container(
                                           padding: const EdgeInsets.all(20),
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.08),
+                                            color: Colors.white.withAlpha((0.08 * 255).round()),
                                             borderRadius: BorderRadius.circular(16),
                                           ),
                                           child: const Icon(Icons.business, size: 48, color: Colors.white),

@@ -33,11 +33,13 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Future<void> _loadUsers() async {
     try {
       final dataSource = MessagingRemoteDataSource();
+
+      // Capture context-dependent values before the async gap
+      final currentUserId = context.read<AuthBloc>().currentUser?.id.toString() ?? '';
+
       final users = await dataSource.getUsers();
 
       // Exclude the current user from the list.
-      final currentUserId =
-          context.read<AuthBloc>().currentUser?.id.toString() ?? '';
       final filtered = users.where((u) => u.id != currentUserId).toList();
 
       if (mounted) {
