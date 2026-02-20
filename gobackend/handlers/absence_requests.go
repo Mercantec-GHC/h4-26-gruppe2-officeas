@@ -213,15 +213,25 @@ func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := h.DB.Delete(&models.AbsenceRequest{}, "id = ?", id)
-
-	if result.Error != nil {
-		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+	var existing models.AbsenceRequest
+	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "absence request not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		http.Error(w, "absence request not found", http.StatusNotFound)
+	// Delete comments first (foreign key from absence_request_comments to absence_requests)
+	if err := h.DB.Where("absence_request_id = ?", id).Delete(&models.AbsenceRequestComment{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.DB.Delete(&models.AbsenceRequest{}, "id = ?", id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -306,10 +316,107 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(a)
 }
 
-// RegisterAbsenceRequests adds absence request routes
+// ReportSickToday godoc
+// @Summary      Report sick for today (same-day sick report)
+// @Description  Creates an absence request for today with type SICK_LEAVE and immediately approves it. Deletes any shifts the user has for today. Returns 409 if the user already has an approved absence for today.
+// @Tags         absence-requests
+// @Produce      json
+// @Success      201  {object}  models.AbsenceRequest
+// @Failure      409  {string}  string  "already has approved absence for today"
+// @Security     BearerAuth
+// @Router       /absence-requests/sick-today [post]
+func (h AbsenceRequests) ReportSickToday(w http.ResponseWriter, r *http.Request) {
+	userID, err := currentUserUUID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	var count int64
+
+	if err := h.DB.Model(&models.AbsenceRequest{}).
+		Where("user_id = ?", userID).
+		Where("status = ?", models.RequestStatusApproved).
+		Where("start_date <= ?", today).
+		Where("end_date >= ?", today).
+		Count(&count).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	if count > 0 {
+		http.Error(w, "Already has approved absence for today", http.StatusConflict)
+		return
+	}
+
+	now := time.Now()
+	reviewedBy := userID
+	
+	a := models.AbsenceRequest{
+		Id:               uuid.New(),
+		UserId:           userID,
+		Type:             models.AbsenceTypeSickLeave,
+		StartDate:        today,
+		EndDate:          today,
+		Status:           models.RequestStatusApproved,
+		CreatedAt:        now,
+		ReviewedAt:       &now,
+		ReviewedByUserId: &reviewedBy,
+	}
+	
+	if err := h.DB.Create(&a).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	comment := models.AbsenceRequestComment{
+		Id:               uuid.New(),
+		AbsenceRequestId: a.Id,
+		UserId:           userID,
+		Content:          "Same-day sick report",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	
+	if err := h.DB.Create(&comment).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Delete any shifts the user has for today (UTC date)
+	tomorrow := today.Add(24 * time.Hour)
+	if err := h.DB.Where("user_id = ?", userID).
+		Where("start_time >= ?", today).
+		Where("start_time < ?", tomorrow).
+		Delete(&models.Shift{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	relatedType := "absence_request"
+	createNotification(
+		h.DB,
+		userID,
+		"Absence approved",
+		"Your same-day sick report has been registered.",
+		models.NotificationTypeAbsenceApproved,
+		&a.Id,
+		&relatedType,
+	)
+
+	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", a.Id)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(a)
+}
+
+// RegisterAbsenceRequests adds absence request routes.
 func RegisterAbsenceRequests(router *mux.Router, h AbsenceRequests, prefix string) {
 	router.HandleFunc(prefix, h.List).Methods("GET")
 	router.HandleFunc(prefix, h.Create).Methods("POST")
+	router.HandleFunc(prefix+"/sick-today", h.ReportSickToday).Methods("POST")
 	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
 	router.HandleFunc(prefix+"/{id}/approve", h.Approve).Methods("PUT")
