@@ -89,20 +89,18 @@ class MyApp extends StatelessWidget {
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated ? const MainNavigation() : const LoginPage(),
+            home: state is Authenticated ? const MainNavigation(initialIndex: 0) : const LoginPage(),
+            initialRoute: state is Authenticated ? '/home' : null,
             routes: {
               '/login': (context) => const LoginPage(),
-              '/home': (context) => const HomePage(),
+              '/home': (context) => const MainNavigation(initialIndex: 0),
+              '/messages': (context) => const MainNavigation(initialIndex: 1),
+              '/calendar': (context) => const MainNavigation(initialIndex: 2),
+              '/notifications': (context) => const MainNavigation(initialIndex: 3),
               '/tickets': (context) =>
                   const ItSupportGuard(child: TicketListPage()),
               '/tickets/new': (context) => const CreateTicketPage(),
               '/navigation': (context) => const MainNavigation(),
-              '/calendar': (context) => CalendarPage(
-                shiftRepository: getIt<ShiftRepository>(),
-                absenceRequestRepository: getIt<AbsenceRequestRepository>(),
-              ),
-              '/notifications': (context) => const NotificationsPage(),
-
             },
           );
         },
@@ -111,17 +109,27 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Route paths for bottom bar tabs (so e.g. /calendar opens calendar tab).
+const _tabRoutes = [
+  '/home',
+  '/messages',
+  '/calendar',
+  '/notifications',
+];
+
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  const MainNavigation({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
-  // Pages correspond to bottom navigation items: Home, Calendar, Notifications
+  // Pages correspond to bottom navigation items: Home, Messages, Calendar, Notifications
   static final List<Widget> _pages = <Widget>[
     const HomePage(),
     const ConversationsPage(),
@@ -133,15 +141,31 @@ class _MainNavigationState extends State<MainNavigation> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
+  @override
+  void didUpdateWidget(MainNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _selectedIndex = widget.initialIndex;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          if (index == _selectedIndex) return;
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            _tabRoutes[index],
+            (route) => false,
+          );
         },
         backgroundColor: Colors.white,
         selectedItemColor: Theme.of(context).colorScheme.primary,
