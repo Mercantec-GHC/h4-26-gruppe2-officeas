@@ -11,8 +11,7 @@ import (
 // SeedShifts creates shifts for seed users.
 func SeedShifts(db *gorm.DB) error {
 	var users []models.User
-	
-	if err := db.Where("email IN ?", SeedUserEmails).Find(&users).Error; err != nil {
+	if err := db.Limit(10).Find(&users).Error; err != nil {
 		return err
 	}
 	

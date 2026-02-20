@@ -1,73 +1,107 @@
 package seed
 
 import (
+	"fmt"
 	"stuff/models"
 
+	"github.com/go-faker/faker/v4"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// SeedPassword is the password for all seeded users (development only).
+// SeedPassword is the password for all faker-seeded users (development only).
 // Documented here so devs can log in: Seeder123!
 const SeedPassword = "Seeder123!"
 
-// SeedUserEmails are the emails used for seed users (for other seeders to look up).
-var SeedUserEmails = []string{
-	"alice@seed.example.com",
-	"bob@seed.example.com",
-	"carol@seed.example.com",
-	"dave@seed.example.com",
+// SeedFakeUserCount is the number of additional users to create with faker (on top of the Mercantec Test user).
+const SeedFakeUserCount = 80
+
+const mercantecTestEmail = "mercantec@mercantec.dk"
+const mercantecTestPassword = "Password123!"
+
+// fakeUser is used with go-faker to generate name and email.
+type fakeUser struct {
+	FirstName string `faker:"first_name"`
+	LastName  string `faker:"last_name"`
+	Email     string `faker:"email"`
 }
 
 // SeedUsers creates seed users if they do not exist.
-// Idempotent: skips creation when a user with the same email exists.
-// All seed users use password Seeder123!
+// First creates the Mercantec Test user (IT-Support department); then creates SeedFakeUserCount
+// users with go-faker assigned to random departments. Idempotent: skips when email exists.
 func SeedUsers(db *gorm.DB) error {
+	var departments []models.Department
+	if err := db.Find(&departments).Error; err != nil || len(departments) == 0 {
+		return err
+	}
+
+	var deptITSupport models.Department
+	if err := db.Where("name = ?", "IT-Support").First(&deptITSupport).Error; err != nil {
+		return err
+	}
+
+	// Mercantec Test user (IT-Support department)
+	{
+		var existing models.User
+		if err := db.Where("email = ?", mercantecTestEmail).First(&existing).Error; err != nil {
+			hashed, err := bcrypt.GenerateFromPassword([]byte(mercantecTestPassword), bcrypt.DefaultCost)
+
+			if err != nil {
+				return err
+			}
+			
+			user := models.User{
+				Id:           uuid.New(),
+				Name:         "Mercantec Test",
+				Email:        mercantecTestEmail,
+				PasswordHash: string(hashed),
+				DepartmentId: deptITSupport.Id,
+			}
+			
+			if err := db.Create(&user).Error; err != nil {
+				return err
+			}
+		}
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(SeedPassword), bcrypt.DefaultCost)
+
 	if err != nil {
 		return err
 	}
 
-	var deptIT, deptHR, deptSales models.Department
-	if err := db.Where("name = ?", "IT").First(&deptIT).Error; err != nil {
-		return err
-	}
-	
-	if err := db.Where("name = ?", "HR").First(&deptHR).Error; err != nil {
-		return err
-	}
+	// Faker-generated users (random departments)
+	seenEmails := map[string]struct{}{mercantecTestEmail: {}}
 
-	if err := db.Where("name = ?", "Sales").First(&deptSales).Error; err != nil {
-		return err
-	}
+	for i := 0; i < SeedFakeUserCount; i++ {
+		var fu fakeUser
 
-	users := []struct {
-		name   string
-		email  string
-		deptID uuid.UUID
-	}{
-		{"Alice Admin", "alice@seed.example.com", deptIT.Id},
-		{"Bob Developer", "bob@seed.example.com", deptIT.Id},
-		{"Carol Manager", "carol@seed.example.com", deptHR.Id},
-		{"Dave Sales", "dave@seed.example.com", deptSales.Id},
-	}
+		if err := faker.FakeData(&fu); err != nil {
+			return err
+		}
 
-	for _, u := range users {
+		if _, ok := seenEmails[fu.Email]; ok {
+			i-- // retry this slot
+			continue
+		}
+		
+		seenEmails[fu.Email] = struct{}{}
+
 		var existing models.User
-
-		if err := db.Where("email = ?", u.email).First(&existing).Error; err == nil {
+		
+		if err := db.Where("email = ?", fu.Email).First(&existing).Error; err == nil {
 			continue
 		}
 
+		deptIdx := i % len(departments)
 		user := models.User{
 			Id:           uuid.New(),
-			Name:         u.name,
-			Email:        u.email,
+			Name:         fmt.Sprintf("%s %s", fu.FirstName, fu.LastName),
+			Email:        fu.Email,
 			PasswordHash: string(hashedPassword),
-			DepartmentId: u.deptID,
+			DepartmentId: departments[deptIdx].Id,
 		}
-		
 		if err := db.Create(&user).Error; err != nil {
 			return err
 		}
