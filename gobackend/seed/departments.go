@@ -12,7 +12,20 @@ import (
 // SeedDepartments creates IT, HR, and Sales departments if they do not exist.
 // Idempotent: skips creation when a department with the same name exists.
 func SeedDepartments(db *gorm.DB) error {
-	names := []string{"IT", "HR", "Sales"}
+	names := []string{
+		"IT-Support",
+		"HR",
+		"Salg",
+		"Udvikling",
+		"Kundeservice",
+		"Produkt",
+		"Økonomi",
+		"Drift",
+		"Marketing",
+		"Ledelse",
+		"Design",
+		"Datateam",
+	}
 	now := time.Now()
 
 	for _, name := range names {

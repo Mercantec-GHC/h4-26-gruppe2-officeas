@@ -20,8 +20,7 @@ func SeedTicketComments(db *gorm.DB) error {
 	}
 
 	var users []models.User
-	
-	if err := db.Where("email IN ?", SeedUserEmails).Find(&users).Error; err != nil {
+	if err := db.Limit(10).Find(&users).Error; err != nil {
 		return err
 	}
 	
@@ -29,20 +28,9 @@ func SeedTicketComments(db *gorm.DB) error {
 		return nil
 	}
 
-	aliceID := findUserIDByEmail(users, "alice@seed.example.com")
-	bobID := findUserIDByEmail(users, "bob@seed.example.com")
-	
-	if aliceID == uuid.Nil || bobID == uuid.Nil {
-		return nil
-	}
-
 	// Add one comment per ticket (alternating users)
 	for i, t := range tickets {
-		commenterID := aliceID
-	
-		if i%2 == 1 {
-			commenterID = bobID
-		}
+		commenterID := users[i%2].Id
 	
 		c := models.TicketComment{
 			Id:        uuid.New(),
@@ -57,13 +45,4 @@ func SeedTicketComments(db *gorm.DB) error {
 	}
 
 	return nil
-}
-
-func findUserIDByEmail(users []models.User, email string) uuid.UUID {
-	for i := range users {
-		if users[i].Email == email {
-			return users[i].Id
-		}
-	}
-	return uuid.Nil
 }
