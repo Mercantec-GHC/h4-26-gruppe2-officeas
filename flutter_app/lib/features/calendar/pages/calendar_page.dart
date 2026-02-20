@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../../domain/entities/shift_entity.dart';
+import '../../../domain/entities/absence_request_entity.dart';
 import '../../../domain/repositories/shift_repository.dart';
+import '../../../domain/repositories/absence_request_repository.dart';
+import '../../../features/auth/bloc/auth_bloc.dart';
+import '../dialogs/create_absence_request_dialog.dart';
 
 class CalendarPage extends StatefulWidget {
   final ShiftRepository shiftRepository;
+  final AbsenceRequestRepository absenceRequestRepository;
 
   const CalendarPage({
     super.key,
     required this.shiftRepository,
+    required this.absenceRequestRepository,
   });
 
   @override
@@ -21,6 +28,7 @@ class _CalendarPageState extends State<CalendarPage> {
   late DateTime? _endDate;
   late DateTime _focusedDate;
   List<ShiftEntity> _shifts = [];
+  List<AbsenceRequestEntity> _absenceRequests = [];
   bool _isLoading = false;
 
   @override
@@ -30,95 +38,7 @@ class _CalendarPageState extends State<CalendarPage> {
     _endDate = null;
     _focusedDate = DateTime.now();
     _loadShifts();
-  }
-
-  /// Header with month navigation
-  Widget _buildHeader() {
-    final monthLabel = DateFormat.yMMMM().format(_focusedDate);
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.chevron_left),
-          onPressed: () => setState(() {
-            _focusedDate = DateTime(_focusedDate.year, _focusedDate.month - 1, 1);
-          }),
-        ),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Calendar', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 2),
-            Text(monthLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700)),
-          ]),
-        ),
-        IconButton(
-          icon: const Icon(Icons.today),
-          tooltip: 'Today',
-          onPressed: () => setState(() {
-            _focusedDate = DateTime.now();
-          }),
-        ),
-        IconButton(
-          icon: const Icon(Icons.chevron_right),
-          onPressed: () => setState(() {
-            _focusedDate = DateTime(_focusedDate.year, _focusedDate.month + 1, 1);
-          }),
-        ),
-      ],
-    );
-  }
-
-  /// Card that shows selected date(s)
-  Widget _selectedInfoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(
-          _startDate == null && _endDate == null
-              ? 'Select a date'
-              : _startDate != null && _endDate == null
-                  ? 'Selected: ${DateFormat('MMM d, yyyy').format(_startDate!)}'
-                  : 'Range: ${DateFormat('MMM d').format(_startDate!)} - ${DateFormat('MMM d, yyyy').format(_endDate!)}',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        if (_startDate != null && _endDate != null)
-          Text('Duration: ${_endDate!.difference(_startDate!).inDays + 1} days', style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(height: 8),
-        Row(children: [
-          ElevatedButton(onPressed: () => setState(() { _startDate = null; _endDate = null; }), child: const Text('Clear')),
-          const SizedBox(width: 8),
-          OutlinedButton(onPressed: _loadShifts, child: const Text('Refresh')),
-        ])
-      ]),
-    );
-  }
-
-  /// Panel that displays shifts based on selection or upcoming
-  Widget _shiftsPanel() {
-    List<ShiftEntity> list;
-    if (_startDate != null && _endDate != null) {
-      list = _getShiftsForRange(_startDate!, _endDate!);
-    } else if (_startDate != null && _endDate == null) {
-      list = _getShiftsForDate(_startDate!);
-    } else {
-      // upcoming: next 7 days
-      final now = DateTime.now();
-      final future = now.add(const Duration(days: 7));
-      list = _getShiftsForRange(now, future);
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade100)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Shifts', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        _buildShiftsList(list),
-      ]),
-    );
+    _loadAbsenceRequests();
   }
 
   /// Load shifts from database
@@ -150,6 +70,30 @@ class _CalendarPageState extends State<CalendarPage> {
     }
   }
 
+  /// Load absence requests from database
+  Future<void> _loadAbsenceRequests() async {
+    final result = await widget.absenceRequestRepository.getAllAbsenceRequests();
+
+    if (mounted) {
+      result.when(
+        success: (absenceRequests) {
+          setState(() {
+            _absenceRequests = absenceRequests;
+          });
+        },
+        failure: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Fejl ved indlæsning af absence requests: ${error.message}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        },
+      );
+    }
+  }
+
   /// Get shifts for a specific date
   List<ShiftEntity> _getShiftsForDate(DateTime date) {
     return _shifts.where((shift) {
@@ -169,6 +113,40 @@ class _CalendarPageState extends State<CalendarPage> {
     }).toList();
   }
 
+  /// Show absence request dialog
+  void _showAbsenceRequestDialog() {
+    final userId = context.read<AuthBloc>().currentUser?.id ?? '';
+    
+    if (userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User not found. Please log in again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => CreateAbsenceRequestDialog(
+        absenceRequestRepository: widget.absenceRequestRepository,
+        userId: userId,
+        selectedStartDate: _startDate,
+        selectedEndDate: _endDate,
+        onAbsenceRequestCreated: (absenceRequest) {
+          setState(() {
+            _absenceRequests.add(absenceRequest);
+            _startDate = null;
+            _endDate = null;
+          });
+          _loadAbsenceRequests(); // Reload to get latest data
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,156 +158,428 @@ class _CalendarPageState extends State<CalendarPage> {
           // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadShifts,
-            tooltip: 'Refresh shifts',
+            onPressed: _isLoading ? null : () {
+              _loadShifts();
+              _loadAbsenceRequests();
+            },
+            tooltip: 'Refresh shifts and absence requests',
           ),
         ],
       ),
       body: _isLoading && _shifts.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : LayoutBuilder(builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 800;
-              return Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Top header with month and actions
-                        Row(
-                          children: [
-                            Expanded(child: _buildHeader()),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // placeholder for add shift flow
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add shift (not implemented)')));
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add shift'),
-                              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : Column(
+              children: [
+                // Fixed Calendar at top
+                Flexible(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 500),
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8.0),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: TableCalendar(
+                            firstDay: DateTime.utc(2020, 1, 1),
+                            lastDay: DateTime.utc(2030, 12, 31),
+                            focusedDay: _focusedDate,
+                            selectedDayPredicate: (day) {
+                              if (_startDate == null && _endDate == null) return false;
+                              if (_startDate != null && _endDate == null) {
+                                return isSameDay(_startDate, day);
+                              }
+                              // If both dates are set, highlight range
+                              return day.isAfter(_startDate!) &&
+                                  day.isBefore(_endDate!) ||
+                                  isSameDay(_startDate, day) ||
+                                  isSameDay(_endDate, day);
+                            },
+                            eventLoader: _getShiftsForDate,
+                            onDaySelected: (selectedDay, focusedDay) {
+                              setState(() {
+                                if (_startDate == null && _endDate == null) {
+                                  // First selection - set start date
+                                  _startDate = selectedDay;
+                                } else if (_startDate != null && _endDate == null) {
+                                  // Second selection - set end date
+                                  if (selectedDay.isBefore(_startDate!)) {
+                                    // If selected date is before start, swap them
+                                    _endDate = _startDate;
+                                    _startDate = selectedDay;
+                                  } else {
+                                    _endDate = selectedDay;
+                                  }
+                                } else {
+                                  // Both dates set - reset and start over
+                                  _startDate = selectedDay;
+                                  _endDate = null;
+                                }
+                                _focusedDate = focusedDay;
+                              });
+                            },
+                            onPageChanged: (focusedDay) {
+                              _focusedDate = focusedDay;
+                            },
+                            calendarStyle: CalendarStyle(
+                              defaultTextStyle: const TextStyle(fontSize: 12),
+                              weekendTextStyle: const TextStyle(fontSize: 12, color: Colors.red),
+                              selectedDecoration: BoxDecoration(
+                                color: Colors.blue.shade700,
+                                shape: BoxShape.circle,
+                              ),
+                              todayDecoration: BoxDecoration(
+                                color: Colors.orange.shade300,
+                                shape: BoxShape.circle,
+                              ),
+                              markerDecoration: BoxDecoration(
+                                color: Colors.blue.shade400,
+                                shape: BoxShape.circle,
+                              ),
+                              outsideTextStyle: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade400,
+                              ),
                             ),
-                          ],
+                            headerStyle: HeaderStyle(
+                              formatButtonVisible: false,
+                              titleCentered: true,
+                              titleTextStyle: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade700,
+                              ),
+                              leftChevronIcon: const Icon(
+                                Icons.arrow_left,
+                                size: 20,
+                                color: Colors.blue,
+                              ),
+                              rightChevronIcon: const Icon(
+                                Icons.arrow_right,
+                                size: 20,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            daysOfWeekStyle: const DaysOfWeekStyle(
+                              weekdayStyle: TextStyle(fontSize: 11),
+                              weekendStyle: TextStyle(fontSize: 11, color: Colors.red),
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Main content: calendar + list
-                        Expanded(
-                          child: isWide
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // Calendar panel
-                                    Expanded(
-                                      flex: 5,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.grey.shade100, blurRadius: 8)]),
-                                        child: Column(children: [
-                                          Expanded(
-                                            child: TableCalendar(
-                                              firstDay: DateTime.utc(2020, 1, 1),
-                                              lastDay: DateTime.utc(2030, 12, 31),
-                                              focusedDay: _focusedDate,
-                                              selectedDayPredicate: (day) {
-                                                if (_startDate == null && _endDate == null) return false;
-                                                if (_startDate != null && _endDate == null) return isSameDay(_startDate, day);
-                                                return day.isAfter(_startDate!) && day.isBefore(_endDate!) || isSameDay(_startDate, day) || isSameDay(_endDate, day);
-                                              },
-                                              eventLoader: _getShiftsForDate,
-                                              onDaySelected: (selectedDay, focusedDay) {
-                                                setState(() {
-                                                  if (_startDate == null && _endDate == null) {
-                                                    _startDate = selectedDay;
-                                                  } else if (_startDate != null && _endDate == null) {
-                                                    if (selectedDay.isBefore(_startDate!)) {
-                                                      _endDate = _startDate;
-                                                      _startDate = selectedDay;
-                                                    } else {
-                                                      _endDate = selectedDay;
-                                                    }
-                                                  } else {
-                                                    _startDate = selectedDay;
-                                                    _endDate = null;
-                                                  }
-                                                  _focusedDate = focusedDay;
-                                                });
-                                              },
-                                              onPageChanged: (focusedDay) => _focusedDate = focusedDay,
-                                              calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: Colors.blue.shade700, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: Colors.orange.shade300, shape: BoxShape.circle), markerDecoration: BoxDecoration(color: Colors.blue.shade400, shape: BoxShape.circle)),
-                                              headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextFormatter: (date, locale) => DateFormat.yMMM(locale).format(date), leftChevronIcon: const Icon(Icons.chevron_left), rightChevronIcon: const Icon(Icons.chevron_right)),
-                                            ),
-                                          ),
-                                        ]),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Right panel: selected dates & shifts
-                                    Expanded(
-                                      flex: 5,
-                                      child: SingleChildScrollView(
-                                        child: Column(children: [
-                                          _selectedInfoCard(),
-                                          const SizedBox(height: 12),
-                                          _shiftsPanel(),
-                                        ]),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    // compact calendar panel
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.grey.shade100, blurRadius: 8)]),
-                                      child: TableCalendar(
-                                        firstDay: DateTime.utc(2020, 1, 1),
-                                        lastDay: DateTime.utc(2030, 12, 31),
-                                        focusedDay: _focusedDate,
-                                        selectedDayPredicate: (day) {
-                                          if (_startDate == null && _endDate == null) return false;
-                                          if (_startDate != null && _endDate == null) return isSameDay(_startDate, day);
-                                          return day.isAfter(_startDate!) && day.isBefore(_endDate!) || isSameDay(_startDate, day) || isSameDay(_endDate, day);
-                                        },
-                                        eventLoader: _getShiftsForDate,
-                                        onDaySelected: (selectedDay, focusedDay) {
-                                          setState(() {
-                                            if (_startDate == null && _endDate == null) {
-                                              _startDate = selectedDay;
-                                            } else if (_startDate != null && _endDate == null) {
-                                              if (selectedDay.isBefore(_startDate!)) {
-                                                _endDate = _startDate;
-                                                _startDate = selectedDay;
-                                              } else {
-                                                _endDate = selectedDay;
-                                              }
-                                            } else {
-                                              _startDate = selectedDay;
-                                              _endDate = null;
-                                            }
-                                            _focusedDate = focusedDay;
-                                          });
-                                        },
-                                        onPageChanged: (focusedDay) => _focusedDate = focusedDay,
-                                        calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: Colors.blue.shade700, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: Colors.orange.shade300, shape: BoxShape.circle), markerDecoration: BoxDecoration(color: Colors.blue.shade400, shape: BoxShape.circle)),
-                                        headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextFormatter: (date, locale) => DateFormat.yMMM(locale).format(date)),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    _selectedInfoCard(),
-                                    const SizedBox(height: 12),
-                                    _shiftsPanel(),
-                                  ],
-                                ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              );
-            }),
+                // Scrollable Selected Dates and Shifts Section
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 500),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 4.0),
+                            // Selected Date Range Info
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                border: Border.all(color: Colors.green.shade300),
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _startDate == null && _endDate == null
+                                        ? 'Select a date range'
+                                        : _startDate != null && _endDate == null
+                                            ? 'Start date selected, select end date'
+                                            : 'Date Range Selected:',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  if (_startDate != null) ...[
+                                    const SizedBox(height: 6.0),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today, size: 14, color: Colors.green),
+                                        const SizedBox(width: 6.0),
+                                        Expanded(
+                                          child: Text(
+                                            'Start: ${DateFormat('MMM d, yyyy').format(_startDate!)}',
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: Colors.green.shade700,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (_endDate != null) ...[
+                                    const SizedBox(height: 4.0),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                                        const SizedBox(width: 6.0),
+                                        Expanded(
+                                          child: Text(
+                                            'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}',
+                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: Colors.blue.shade700,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6.0),
+                                    Text(
+                                      'Duration: ${_endDate!.difference(_startDate!).inDays + 1} days',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            color: Colors.purple.shade700,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ],
+                                  if (_startDate != null && _endDate != null) ...[
+                                    const SizedBox(height: 8.0),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () {
+                                          setState(() {
+                                            _startDate = null;
+                                            _endDate = null;
+                                          });
+                                        },
+                                        icon: const Icon(Icons.clear, size: 16),
+                                        label: const Text('Clear Range'),
+                                        style: ElevatedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6.0),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: _showAbsenceRequestDialog,
+                                        icon: const Icon(Icons.event_busy, size: 16),
+                                        label: const Text('Request Absence'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.orange.shade600,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Display shifts for selected date range
+                            const SizedBox(height: 12.0),
+                            if (_startDate != null && _endDate != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(8.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.purple.shade50,
+                                  border: Border.all(color: Colors.purple.shade300),
+                                  borderRadius: BorderRadius.circular(6.0),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Shifts in selected period:',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.purple.shade700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildShiftsList(
+                                      _getShiftsForRange(_startDate!, _endDate!),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ] else if (_startDate != null && _endDate == null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(8.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade50,
+                                  border: Border.all(color: Colors.amber.shade300),
+                                  borderRadius: BorderRadius.circular(6.0),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Shifts on ${DateFormat('MMM d, yyyy').format(_startDate!)}:',
+                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.amber.shade700,
+                                          ),
+                                    ),
+                                    const SizedBox(height: 8.0),
+                                    _buildShiftsList(_getShiftsForDate(_startDate!)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            // Display your absence requests
+                            const SizedBox(height: 12.0),
+                            Container(
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                border: Border.all(color: Colors.red.shade300),
+                                borderRadius: BorderRadius.circular(6.0),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your Absence Requests:',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  _buildAbsenceRequestsList(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  /// Build absence requests list widget
+  Widget _buildAbsenceRequestsList() {
+    if (_absenceRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            'No absence requests',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey,
+                ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _absenceRequests.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 6.0),
+      itemBuilder: (context, index) {
+        final request = _absenceRequests[index];
+        return _buildAbsenceRequestCard(request);
+      },
+    );
+  }
+
+  /// Build a single absence request card
+  Widget _buildAbsenceRequestCard(AbsenceRequestEntity request) {
+    final statusColor = switch (request.status) {
+      AbsenceRequestStatus.pending => Colors.orange,
+      AbsenceRequestStatus.approved => Colors.green,
+      AbsenceRequestStatus.rejected => Colors.red,
+    };
+
+    return Card(
+      elevation: 2.0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4.0),
+        side: BorderSide(color: statusColor, width: 2.0),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with type and status badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.type.displayName,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        'Requested: ${DateFormat('MMM d, yyyy').format(request.createdAt)}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Colors.grey.shade700,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: statusColor.withAlpha((0.2 * 255).round()),
+                    border: Border.all(color: statusColor),
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
+                  child: Text(
+                    request.status.displayName,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6.0),
+            // Date range
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                const SizedBox(width: 4.0),
+                Expanded(
+                  child: Text(
+                    '${DateFormat('MMM d').format(request.startDate)} - ${DateFormat('MMM d, yyyy').format(request.endDate)} (${request.durationInDays} days)',
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -3,19 +3,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'domain/repositories/shift_repository.dart';
-import 'features/messaging/bloc/messaging_bloc.dart';
-import 'features/messaging/pages/conversations_page.dart';
+import 'domain/repositories/absence_request_repository.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/calendar/pages/calendar_page.dart';
+import 'features/notifications/pages/notifications_page.dart';
 import 'core/theme/theme.dart';
+import 'core/widgets/it_support_guard.dart';
+import 'features/tickets/bloc/tickets_bloc.dart';
+import 'features/messaging/bloc/messaging_bloc.dart';
+import 'features/messaging/pages/conversations_page.dart';
+import 'features/tickets/pages/ticket_list_page.dart';
+import 'features/tickets/pages/create_ticket_page.dart';
 
 /// Main entry point
-///
+/// 
 /// Initialiserer app dependencies og configuration før app starter.
-///
+/// 
 /// Setup steps:
 /// 1. Initialisér app configuration (environment)
 /// 2. Setup dependency injection
@@ -28,7 +34,7 @@ void main() async {
   // TODO: Skift til Environment.production når du deployer til produktion!
   await AppConfig.initialize(Environment.development);
   // await AppConfig.initialize(Environment.production);
-
+  
   // Log hvilket environment vi kører i
   debugPrint('🚀 Starting app in ${AppConfig.instance.environment.name} mode');
   debugPrint('📡 API Base URL: ${AppConfig.instance.apiBaseUrl}');
@@ -42,14 +48,14 @@ void main() async {
 }
 
 /// Tip: Skift environment nemt
-///
+/// 
 /// For at skifte mellem localhost og deployed API, ændre bare Environment i main():
 /// - Development (localhost): Environment.development
 /// - Production (deployed): Environment.production
 /// - Staging (hvis I har det): Environment.staging
 
 /// Root app widget
-///
+/// 
 /// Setup BLoC providers og MaterialApp.
 /// BLoCs injiceres via DI container (getIt).
 class MyApp extends StatelessWidget {
@@ -70,6 +76,12 @@ class MyApp extends StatelessWidget {
         ),
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
+        BlocProvider(create: (context) => getIt<TicketsBloc>()),
+        
+        // TODO: Tilføj flere BLoCs her efterhånden:
+        // BlocProvider(
+        //   create: (context) => getIt<LoginBloc>(),
+        // ),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
@@ -77,15 +89,20 @@ class MyApp extends StatelessWidget {
             title: 'OfficeAs',
             theme: appTheme,
             debugShowCheckedModeBanner: false,
-            home: state is Authenticated
-                ? const MainNavigation()
-                : const LoginPage(),
+            home: state is Authenticated ? const MainNavigation() : const LoginPage(),
             routes: {
               '/login': (context) => const LoginPage(),
               '/home': (context) => const HomePage(),
+              '/tickets': (context) =>
+                  const ItSupportGuard(child: TicketListPage()),
+              '/tickets/new': (context) => const CreateTicketPage(),
               '/navigation': (context) => const MainNavigation(),
-              '/calendar': (context) =>
-                  CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+              '/calendar': (context) => CalendarPage(
+                shiftRepository: getIt<ShiftRepository>(),
+                absenceRequestRepository: getIt<AbsenceRequestRepository>(),
+              ),
+              '/notifications': (context) => const NotificationsPage(),
+
             },
           );
         },
@@ -104,10 +121,15 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
+  // Pages correspond to bottom navigation items: Home, Calendar, Notifications
   static final List<Widget> _pages = <Widget>[
     const HomePage(),
     const ConversationsPage(),
-    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+    CalendarPage(
+      shiftRepository: getIt<ShiftRepository>(),
+      absenceRequestRepository: getIt<AbsenceRequestRepository>(),
+    ),
+    const NotificationsPage(),
   ];
 
   @override
@@ -134,8 +156,14 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.calendar_today),
             label: 'Calendar',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_none),
+            label: 'Notifikationer',
+          ),
         ],
       ),
     );
   }
 }
+
+
