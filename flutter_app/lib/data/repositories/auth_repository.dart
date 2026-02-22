@@ -116,6 +116,12 @@ class AuthRepository {
     return prefs.getString(_tokenKey);
   }
 
+  Future<bool> hasStoredUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final u = prefs.getString(_userKey);
+    return u != null && u.isNotEmpty;
+  }
+
   Future<bool> isLoggedIn() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;

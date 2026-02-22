@@ -2,7 +2,7 @@ import '../../core/api/api_result.dart';
 import '../../domain/entities/absence_request_entity.dart';
 import '../../domain/repositories/absence_request_repository.dart';
 import '../datasources/absence_request_remote_datasource.dart';
-import '../../core/api/api_client.dart';
+// removed unused import: ../../core/api/api_client.dart
 
 /// Absence Request Repository Implementation (Data Layer)
 ///

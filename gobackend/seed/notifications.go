@@ -11,7 +11,7 @@ import (
 func SeedNotifications(db *gorm.DB) error {
 	var users []models.User
 	
-	if err := db.Where("email IN ?", SeedUserEmails).Find(&users).Error; err != nil {
+	if err := db.Limit(5).Find(&users).Error; err != nil {
 		return err
 	}
 	

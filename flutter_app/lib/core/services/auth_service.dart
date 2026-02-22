@@ -140,6 +140,11 @@ class AuthService {
     return await _authRepository.getToken();
   }
 
+  // Check if user data is stored locally
+  Future<bool> hasStoredUser() async {
+    return await _authRepository.hasStoredUser();
+  }
+
   // Logout
   Future<void> logout() async {
     try {

@@ -593,7 +593,7 @@ class _CalendarPageState extends State<CalendarPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
+                    color: statusColor.withAlpha((0.2 * 255).round()),
                     border: Border.all(color: statusColor),
                     borderRadius: BorderRadius.circular(3.0),
                   ),
