@@ -11,6 +11,8 @@ import '../entities/absence_request_entity.dart';
 /// - Nem testing (mock repository i tests)
 /// - Nem at skifte data source senere
 abstract class AbsenceRequestRepository {
+    /// Cancel absence request
+    Future<ApiResult<void>> cancelAbsenceRequest(String id);
   /// Hent alle absence requests
   Future<ApiResult<List<AbsenceRequestEntity>>> getAllAbsenceRequests();
 

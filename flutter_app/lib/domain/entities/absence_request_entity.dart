@@ -4,8 +4,8 @@ import 'package:equatable/equatable.dart';
 enum AbsenceRequestStatus {
   pending,
   approved,
-  rejected;
-
+  rejected,
+  cancelled;
   String get displayName {
     switch (this) {
       case AbsenceRequestStatus.pending:
@@ -14,6 +14,8 @@ enum AbsenceRequestStatus {
         return 'Approved';
       case AbsenceRequestStatus.rejected:
         return 'Rejected';
+      case AbsenceRequestStatus.cancelled:
+        return 'Cancelled';
     }
   }
 
@@ -85,6 +87,8 @@ enum AbsenceType {
 /// Repræsenterer absence request data i business logic laget.
 /// Entity er uafhængig af data source (API, database, osv.)
 class AbsenceRequestEntity extends Equatable {
+    /// Check if request is cancelled
+    bool get isCancelled => status == AbsenceRequestStatus.cancelled;
   final String id;
   final String userId;
   final AbsenceType type;

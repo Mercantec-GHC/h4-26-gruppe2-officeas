@@ -14,6 +14,31 @@ import '../../core/api/api_client.dart';
 /// - Konverterer models til entities
 /// - Implementerer business logic for data hentning
 class AbsenceRequestRepositoryImpl implements AbsenceRequestRepository {
+    @override
+    Future<ApiResult<void>> cancelAbsenceRequest(String id) async {
+      try {
+        // Mark as cancelled via update (status only)
+        final result = await remoteDataSource.updateAbsenceRequest(
+          id: id,
+          userId: '', // Not needed for cancel, but required by interface
+          type: '', // Not needed for cancel, but required by interface
+          startDate: DateTime.now(), // Not needed for cancel, but required by interface
+          endDate: DateTime.now(), // Not needed for cancel, but required by interface
+          shiftId: null,
+          status: 'CANCELLED',
+        );
+        return result.when(
+          success: (_) => ApiResult.success(null),
+          failure: (error) => ApiResult.failure(error),
+        );
+      } catch (e) {
+        return ApiResult.failure(
+          ApiException.unknown(
+            'Failed to cancel absence request: ${e.toString()}',
+          ),
+        );
+      }
+    }
   final AbsenceRequestRemoteDataSource remoteDataSource;
 
   AbsenceRequestRepositoryImpl({

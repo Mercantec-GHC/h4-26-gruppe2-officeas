@@ -24,6 +24,49 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
+    /// Cancel absence request
+    Future<void> _onCancelAbsenceRequest(AbsenceRequestEntity request) async {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cancel Absence Request'),
+          content: const Text('Are you sure you want to cancel this absence request?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      final result = await widget.absenceRequestRepository.cancelAbsenceRequest(request.id);
+      result.when(
+        success: (_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Absence request cancelled'),
+              backgroundColor: Colors.grey,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          _loadAbsenceRequests();
+        },
+        failure: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${error.message}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        },
+      );
+    }
   late DateTime? _startDate;
   late DateTime? _endDate;
   late DateTime _focusedDate;
@@ -505,6 +548,7 @@ class _CalendarPageState extends State<CalendarPage> {
       AbsenceRequestStatus.pending => Colors.orange,
       AbsenceRequestStatus.approved => Colors.green,
       AbsenceRequestStatus.rejected => Colors.red,
+      AbsenceRequestStatus.cancelled => Colors.grey,
     };
 
     return Card(
@@ -561,6 +605,11 @@ class _CalendarPageState extends State<CalendarPage> {
                         ),
                   ),
                 ),
+                if (request.isPending)
+                  TextButton(
+                    onPressed: () => _onCancelAbsenceRequest(request),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                  ),
               ],
             ),
             const SizedBox(height: 6.0),
