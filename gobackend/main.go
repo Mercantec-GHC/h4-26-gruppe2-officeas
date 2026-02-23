@@ -33,7 +33,7 @@ func runMigrations(db *gorm.DB) error {
 	// AutoMigrate will create tables if they don't exist, or update schema if models changed
 	// It will NOT drop existing tables or data
 
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.Department{},
 		&models.User{},
 		&models.Ticket{},
@@ -48,7 +48,26 @@ func runMigrations(db *gorm.DB) error {
 		&models.ConversationMember{},
 		&models.Message{},
 		&models.DeviceToken{},
-	)
+	); err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		ALTER TABLE users
+		ALTER COLUMN is_approved SET DEFAULT FALSE
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		UPDATE users
+		SET is_approved = FALSE
+		WHERE is_approved IS NULL
+	`).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // allowedOrigins defines the production origins permitted for CORS.
@@ -124,8 +143,6 @@ func main() {
 	// Feedback CRUD
 	handlers.RegisterFeedback(router, handlers.Feedback{DB: db}, "/feedback")
 
-	// Users CRUD
-	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
 	// Auth routes with rate limiting
 	authRouter := router.PathPrefix("/auth").Subrouter()
 	authRouter.Use(rateLimiter.RateLimitMiddleware)
@@ -134,6 +151,7 @@ func main() {
 	// Protected routes (require authentication)
 	protectedRouter := router.PathPrefix("").Subrouter()
 	protectedRouter.Use(handlers.AuthMiddleware)
+	handlers.SetAuthorizationService(db)
 
 	// Departments (protected)
 	handlers.RegisterDepartments(protectedRouter, handlers.Departments{DB: db}, "/departments")

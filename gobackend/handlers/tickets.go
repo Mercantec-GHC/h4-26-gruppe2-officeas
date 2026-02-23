@@ -26,9 +26,20 @@ type Tickets struct {
 // @Security     BearerAuth
 // @Router       /tickets [get]
 func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
-	var list []models.Ticket
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").Find(&list).Error; err != nil {
+	var list []models.Ticket
+	query := h.DB.WithContext(r.Context()).Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments")
+
+	if !isLedelse(currentUser) && !isITSupport(currentUser) {
+		query = query.Where("created_by_user_id = ? OR assigned_to_user_id = ?", currentUser.Id, currentUser.Id)
+	}
+
+	if err := query.Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,6 +93,12 @@ func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /tickets [post]
 func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var t models.Ticket
 
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -89,13 +106,19 @@ func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if t.AssignedToUserId != nil && !HasPermission(currentUser, TicketAssign) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	t.Id = uuid.New()
+	t.CreatedByUserId = currentUser.Id
 
 	if t.Status == "" {
 		t.Status = models.TicketStatusOpen
 	}
 
-	if err := h.DB.Create(&t).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Create(&t).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -137,8 +160,14 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var existing models.Ticket
-	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).First(&existing, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "ticket not found", http.StatusNotFound)
 			return
@@ -156,11 +185,48 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 
 	t.Id = id
 
+	isCreator := existing.CreatedByUserId == currentUser.Id
+	isAssignee := existing.AssignedToUserId != nil && *existing.AssignedToUserId == currentUser.Id
+	canManage := isLedelse(currentUser) || isITSupport(currentUser)
+
+	if !canManage && !isCreator && !isAssignee {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if !canManage {
+		if t.AssignedToUserId != nil {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		if isAssignee && !isCreator {
+			if t.Status != models.TicketStatusResolved && t.Status != models.TicketStatusClosed {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			if t.Title != "" || t.Description != "" {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	updates := map[string]interface{}{
-		"title":               t.Title,
-		"description":         t.Description,
+		"title":               existing.Title,
+		"description":         existing.Description,
 		"status":              t.Status,
-		"assigned_to_user_id": t.AssignedToUserId,
+		"assigned_to_user_id": existing.AssignedToUserId,
+	}
+
+	if canManage || isCreator {
+		updates["title"] = t.Title
+		updates["description"] = t.Description
+	}
+
+	if canManage {
+		updates["assigned_to_user_id"] = t.AssignedToUserId
 	}
 
 	if t.Status == models.TicketStatusResolved || t.Status == models.TicketStatusClosed {
@@ -168,7 +234,7 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		updates["resolved_at"] = &now
 	}
 
-	result := h.DB.Model(&models.Ticket{}).Where("id = ?", id).Updates(updates)
+	result := h.DB.WithContext(r.Context()).Model(&models.Ticket{}).Where("id = ?", id).Updates(updates)
 
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
@@ -180,7 +246,7 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id)
+	h.DB.WithContext(r.Context()).Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id)
 
 	relatedType := "ticket"
 	if t.AssignedToUserId != nil {
@@ -239,6 +305,17 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !isLedelse(currentUser) && !isITSupport(currentUser) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	result := h.DB.Delete(&models.Ticket{}, "id = ?", id)
 
 	if result.Error != nil {
@@ -256,9 +333,9 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterTickets adds ticket routes
 func RegisterTickets(router *mux.Router, h Tickets, prefix string) {
-	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix, h.Create).Methods("POST")
-	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(TicketView))).Methods("GET")
+	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(TicketCreate))).Methods("POST")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.GetByID, RequireTicketAccess())).Methods("GET")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Update, RequireTicketAccess())).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequireTicketAccess())).Methods("DELETE")
 }

@@ -7,5 +7,21 @@ bool isItSupportDepartment(UserModel? user) {
 
   final name = user.departmentName?.trim().toLowerCase() ?? '';
 
-  return name == 'it support';
+  return name == 'it support' || name == 'it-support';
+}
+
+bool isHrDepartment(UserModel? user) {
+  if (user == null) return false;
+  final name = user.departmentName?.trim().toLowerCase() ?? '';
+  return name == 'hr';
+}
+
+bool isLedelseDepartment(UserModel? user) {
+  if (user == null) return false;
+  final name = user.departmentName?.trim().toLowerCase() ?? '';
+  return name == 'ledelse';
+}
+
+bool canApproveAccounts(UserModel? user) {
+  return isHrDepartment(user) || isLedelseDepartment(user);
 }

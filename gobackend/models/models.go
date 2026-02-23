@@ -85,14 +85,17 @@ type Department struct {
 
 // User represents a user in the system
 type User struct {
-	Id             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	Name           string    `gorm:"type:varchar(255);not null" json:"name"`
-	Email          string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"email"`
-	PasswordHash   string    `gorm:"type:varchar(255);not null" json:"-"`
-	DepartmentId   uuid.UUID `gorm:"type:uuid;not null" json:"department_id"`
-	FeedbackRating int       `gorm:"default:0" json:"feedback_rating"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Id               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name             string     `gorm:"type:varchar(255);not null" json:"name"`
+	Email            string     `gorm:"type:varchar(255);not null;uniqueIndex" json:"email"`
+	PasswordHash     string     `gorm:"type:varchar(255);not null" json:"-"`
+	DepartmentId     uuid.UUID  `gorm:"type:uuid;not null" json:"department_id"`
+	IsApproved       bool       `gorm:"not null;default:false" json:"is_approved"`
+	ApprovedAt       *time.Time `json:"approved_at"`
+	ApprovedByUserId *uuid.UUID `gorm:"type:uuid" json:"approved_by_user_id"`
+	FeedbackRating   int        `gorm:"default:0" json:"feedback_rating"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 
 	// Relations
 	Department       Department              `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
@@ -101,9 +104,11 @@ type User struct {
 	Shifts           []Shift                 `gorm:"foreignKey:UserId" json:"shifts,omitempty"`
 	AbsenceRequests  []AbsenceRequest        `gorm:"foreignKey:UserId" json:"absence_requests,omitempty"`
 	ReviewedAbsences []AbsenceRequest        `gorm:"foreignKey:ReviewedByUserId" json:"reviewed_absences,omitempty"`
+	ApprovedUsers    []User                  `gorm:"foreignKey:ApprovedByUserId" json:"approved_users,omitempty"`
 	TicketComments   []TicketComment         `gorm:"foreignKey:UserId" json:"ticket_comments,omitempty"`
 	AbsenceComments  []AbsenceRequestComment `gorm:"foreignKey:UserId" json:"absence_comments,omitempty"`
 	Notifications    []Notification          `gorm:"foreignKey:UserId" json:"notifications,omitempty"`
+	ApprovedByUser   *User                   `gorm:"foreignKey:ApprovedByUserId" json:"approved_by_user,omitempty"`
 }
 
 // Ticket represents a support ticket

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/theme/colors.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
+import '../../../data/models/messaging_models.dart';
 import '../../../data/models/user_model.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
@@ -19,9 +20,12 @@ class NewConversationPage extends StatefulWidget {
 
 class _NewConversationPageState extends State<NewConversationPage> {
   final _searchController = TextEditingController();
+  final _messageController = TextEditingController();
   List<UserModel> _allUsers = [];
   List<UserModel> _filteredUsers = [];
+  final Set<String> _selectedUserIds = <String>{};
   bool _isLoading = true;
+  bool _isSubmitting = false;
   String? _error;
 
   @override
@@ -35,7 +39,8 @@ class _NewConversationPageState extends State<NewConversationPage> {
       final dataSource = MessagingRemoteDataSource();
 
       // Capture context-dependent values before the async gap
-      final currentUserId = context.read<AuthBloc>().currentUser?.id.toString() ?? '';
+      final currentUserId =
+          context.read<AuthBloc>().currentUser?.id.toString() ?? '';
 
       final users = await dataSource.getUsers();
 
@@ -70,29 +75,65 @@ class _NewConversationPageState extends State<NewConversationPage> {
   }
 
   Future<void> _startConversation(UserModel user) async {
+    _toggleUserSelection(user.id);
+  }
+
+  void _toggleUserSelection(String userId) {
+    setState(() {
+      if (_selectedUserIds.contains(userId)) {
+        _selectedUserIds.remove(userId);
+      } else {
+        _selectedUserIds.add(userId);
+      }
+    });
+  }
+
+  Future<void> _createOrSendToSelection() async {
+    if (_selectedUserIds.isEmpty || _isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
     final bloc = context.read<MessagingBloc>();
+    final dataSource = MessagingRemoteDataSource();
     final currentUserId =
         context.read<AuthBloc>().currentUser?.id.toString() ?? '';
+    final selected = _selectedUserIds.toList();
+    final isGroup = selected.length > 1;
+    final firstMessage = _messageController.text.trim();
 
-    // The backend will return the existing 1:1 conversation if one exists,
-    // or create a new one. Either way we get a ConversationModel back.
-    bloc.add(
-      CreateConversation(userIds: [currentUserId, user.id], isGroup: false),
-    );
+    try {
+      ConversationModel conv;
+      if (firstMessage.isNotEmpty) {
+        conv = await dataSource.sendMessageToUsers(
+          userIds: selected,
+          content: firstMessage,
+          isGroup: isGroup,
+        );
+      } else {
+        bloc.add(
+          CreateConversation(
+            userIds: [currentUserId, ...selected],
+            isGroup: isGroup,
+          ),
+        );
 
-    // Wait for the ConversationsLoaded state which contains the conversation.
-    final state = await bloc.stream.firstWhere(
-      (s) => s is ConversationsLoaded || s is MessagingError,
-    );
+        final state = await bloc.stream.firstWhere(
+          (s) => s is ConversationsLoaded || s is MessagingError,
+        );
 
-    if (!mounted) return;
+        if (state is MessagingError) {
+          throw Exception(state.message);
+        }
 
-    if (state is ConversationsLoaded && state.conversations.isNotEmpty) {
-      // Find the conversation that has this user as a member.
-      final conv = state.conversations.firstWhere(
-        (c) => c.members.any((m) => m.userId == user.id),
-        orElse: () => state.conversations.first,
-      );
+        final loaded = state as ConversationsLoaded;
+        conv = loaded.conversations.firstWhere(
+          (c) => selected.every((id) => c.members.any((m) => m.userId == id)),
+          orElse: () => loaded.conversations.first,
+        );
+      }
+
+      if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -102,16 +143,19 @@ class _NewConversationPageState extends State<NewConversationPage> {
           ),
         ),
       );
-    } else if (state is MessagingError) {
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(state.message)));
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      setState(() => _isSubmitting = false);
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -119,9 +163,20 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ny besked'),
+        title: const Text('Ny samtale'),
         backgroundColor: Colors.blue.shade700,
         foregroundColor: Colors.white,
+        actions: [
+          TextButton(
+            onPressed: _selectedUserIds.isEmpty || _isSubmitting
+                ? null
+                : _createOrSendToSelection,
+            child: Text(
+              _isSubmitting ? 'SENDER...' : 'NÆSTE',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -147,6 +202,36 @@ class _NewConversationPageState extends State<NewConversationPage> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: _messageController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText:
+                    'Valgfri: skriv første besked til alle valgte brugere',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_selectedUserIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_selectedUserIds.length} selected',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
           // Results
           Expanded(child: _buildBody()),
         ],
@@ -198,7 +283,11 @@ class _NewConversationPageState extends State<NewConversationPage> {
           const Divider(height: 1, indent: 72, endIndent: 16),
       itemBuilder: (context, index) {
         final user = _filteredUsers[index];
-        return _UserTile(user: user, onTap: () => _startConversation(user));
+        return _UserTile(
+          user: user,
+          selected: _selectedUserIds.contains(user.id),
+          onTap: () => _startConversation(user),
+        );
       },
     );
   }
@@ -206,9 +295,14 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
 class _UserTile extends StatelessWidget {
   final UserModel user;
+  final bool selected;
   final VoidCallback onTap;
 
-  const _UserTile({required this.user, required this.onTap});
+  const _UserTile({
+    required this.user,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -231,10 +325,10 @@ class _UserTile extends StatelessWidget {
         user.email,
         style: const TextStyle(color: AppColors.subtitle, fontSize: 13),
       ),
-      trailing: const Icon(
-        Icons.chat_bubble_outline,
-        color: AppColors.primary,
-        size: 20,
+      trailing: Icon(
+        selected ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: selected ? AppColors.primary : AppColors.subtitle,
+        size: 22,
       ),
       onTap: onTap,
     );

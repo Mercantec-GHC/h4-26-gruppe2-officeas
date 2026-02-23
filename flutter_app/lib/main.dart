@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_web_plugins/url_strategy.dart'
-    if (dart.library.io) 'core/config/url_strategy_stub.dart' as url_strategy;
+    if (dart.library.io) 'core/config/url_strategy_stub.dart'
+    as url_strategy;
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'domain/repositories/shift_repository.dart';
@@ -9,6 +10,7 @@ import 'domain/repositories/absence_request_repository.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
+import 'features/auth/pages/pending_approval_page.dart';
 import 'features/home/pages/home_page.dart';
 import 'features/calendar/pages/calendar_page.dart';
 import 'features/notifications/pages/notifications_page.dart';
@@ -19,6 +21,7 @@ import 'features/messaging/bloc/messaging_bloc.dart';
 import 'features/messaging/pages/conversations_page.dart';
 import 'features/tickets/pages/ticket_list_page.dart';
 import 'features/tickets/pages/create_ticket_page.dart';
+import 'features/users/pages/user_approvals_page.dart';
 
 /// Main entry point
 ///
@@ -102,6 +105,7 @@ class MyApp extends StatelessWidget {
             initialRoute: isAuthenticated ? '/home' : null,
             routes: {
               '/login': (context) => const LoginPage(),
+              '/pending-approval': (context) => const PendingApprovalPage(),
               '/home': (context) => const MainNavigation(initialIndex: 0),
               '/messages': (context) => const MainNavigation(initialIndex: 1),
               '/calendar': (context) => const MainNavigation(initialIndex: 2),
@@ -110,6 +114,7 @@ class MyApp extends StatelessWidget {
               '/tickets': (context) =>
                   const ItSupportGuard(child: TicketListPage()),
               '/tickets/new': (context) => const CreateTicketPage(),
+              '/users/approvals': (context) => const UserApprovalsPage(),
               '/navigation': (context) => const MainNavigation(),
             },
           );

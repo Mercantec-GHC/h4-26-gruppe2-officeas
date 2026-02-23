@@ -3,6 +3,7 @@ package seed
 import (
 	"fmt"
 	"stuff/models"
+	"time"
 
 	"github.com/go-faker/faker/v4"
 	"github.com/google/uuid"
@@ -50,15 +51,17 @@ func SeedUsers(db *gorm.DB) error {
 			if err != nil {
 				return err
 			}
-			
+
 			user := models.User{
 				Id:           uuid.New(),
 				Name:         "Mercantec Test",
 				Email:        mercantecTestEmail,
 				PasswordHash: string(hashed),
 				DepartmentId: deptITSupport.Id,
+				IsApproved:   true,
+				ApprovedAt:   func() *time.Time { now := time.Now(); return &now }(),
 			}
-			
+
 			if err := db.Create(&user).Error; err != nil {
 				return err
 			}
@@ -85,11 +88,11 @@ func SeedUsers(db *gorm.DB) error {
 			i-- // retry this slot
 			continue
 		}
-		
+
 		seenEmails[fu.Email] = struct{}{}
 
 		var existing models.User
-		
+
 		if err := db.Where("email = ?", fu.Email).First(&existing).Error; err == nil {
 			continue
 		}
@@ -101,6 +104,8 @@ func SeedUsers(db *gorm.DB) error {
 			Email:        fu.Email,
 			PasswordHash: string(hashedPassword),
 			DepartmentId: departments[deptIdx].Id,
+			IsApproved:   true,
+			ApprovedAt:   func() *time.Time { now := time.Now(); return &now }(),
 		}
 		if err := db.Create(&user).Error; err != nil {
 			return err

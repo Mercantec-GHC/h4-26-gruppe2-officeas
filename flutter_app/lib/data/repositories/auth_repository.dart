@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_response_model.dart';
+import '../models/auth_result_model.dart';
+import '../models/pending_auth_response_model.dart';
 import '../../core/config/app_config.dart';
 
 class AuthRepository {
@@ -38,7 +40,7 @@ class AuthRepository {
     }
   }
 
-  Future<AuthResponseModel> register({
+  Future<AuthResultModel> register({
     required String name,
     required String email,
     required String password,
@@ -55,15 +57,21 @@ class AuthRepository {
         },
       );
 
+      if (response.statusCode == 202 || response.data['token'] == null) {
+        return AuthResultModel.pending(
+          PendingAuthResponseModel.fromJson(response.data),
+        );
+      }
+
       final authResponse = AuthResponseModel.fromJson(response.data);
       await _saveAuthData(authResponse);
-      return authResponse;
+      return AuthResultModel.authenticated(authResponse);
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  Future<AuthResponseModel> ssoLogin({
+  Future<AuthResultModel> ssoLogin({
     required String provider,
     required String idToken,
     required String email,
@@ -82,24 +90,36 @@ class AuthRepository {
         },
       );
 
+      if (response.statusCode == 202 || response.data['token'] == null) {
+        return AuthResultModel.pending(
+          PendingAuthResponseModel.fromJson(response.data),
+        );
+      }
+
       final authResponse = AuthResponseModel.fromJson(response.data);
       await _saveAuthData(authResponse);
-      return authResponse;
+      return AuthResultModel.authenticated(authResponse);
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  Future<AuthResponseModel> githubCallback(String code) async {
+  Future<AuthResultModel> githubCallback(String code) async {
     try {
       final response = await _dio.get(
         '/auth/github/callback',
         queryParameters: {'code': code},
       );
 
+      if (response.statusCode == 202 || response.data['token'] == null) {
+        return AuthResultModel.pending(
+          PendingAuthResponseModel.fromJson(response.data),
+        );
+      }
+
       final authResponse = AuthResponseModel.fromJson(response.data);
       await _saveAuthData(authResponse);
-      return authResponse;
+      return AuthResultModel.authenticated(authResponse);
     } on DioException catch (e) {
       throw _handleError(e);
     }
