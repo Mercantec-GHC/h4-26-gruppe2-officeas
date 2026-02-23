@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/user_model.dart';
+import 'package:image_picker/image_picker.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../auth/bloc/auth_event.dart';
 
@@ -13,6 +17,7 @@ class AccountPage extends StatefulWidget {
 
 class _AccountPageState extends State<AccountPage> {
   bool _isEditing = false;
+  File? _profileImage;
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _departmentController;
@@ -33,6 +38,17 @@ class _AccountPageState extends State<AccountPage> {
     _emailController.dispose();
     _departmentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openCamera() async {
+    try {
+      final result = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const CameraCapturePage()));
+      if (result == null) return;
+      setState(() => _profileImage = File(result));
+      // TODO: upload to backend or persist locally
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fejl ved kamera: $e')));
+    }
   }
 
   void _toggleEdit() {
@@ -136,7 +152,12 @@ class _AccountPageState extends State<AccountPage> {
           children: [
             Row(
               children: [
-                CircleAvatar(radius: 44, backgroundColor: Colors.blue.shade50, child: Text(initials, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700))),
+                  CircleAvatar(
+                    radius: 44,
+                    backgroundColor: Colors.blue.shade50,
+                    foregroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                    child: _profileImage == null ? Text(initials, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700)) : null,
+                  ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -168,6 +189,15 @@ class _AccountPageState extends State<AccountPage> {
               const SizedBox(width: 12),
               _statTile(context, 'Rating', '${user?.feedbackRating ?? 0}'),
             ]),
+              const SizedBox(height: 12),
+              // Image actions (camera)
+              Row(children: [
+                ElevatedButton.icon(
+                  onPressed: _openCamera,
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Take photo'),
+                ),
+              ]),
           ],
         ),
       ),
@@ -239,5 +269,74 @@ class _AccountPageState extends State<AccountPage> {
 
   String _formatDate(DateTime d) {
     return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+}
+
+// A small full-screen camera capture page using `camera` plugin.
+class CameraCapturePage extends StatefulWidget {
+  const CameraCapturePage({super.key});
+
+  @override
+  State<CameraCapturePage> createState() => _CameraCapturePageState();
+}
+
+class _CameraCapturePageState extends State<CameraCapturePage> {
+  CameraController? _controller;
+  bool _isReady = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    try {
+      final cameras = await availableCameras();
+      final first = cameras.isNotEmpty ? cameras.first : null;
+      if (first == null) {
+        setState(() => _error = 'No cameras available');
+        return;
+      }
+      _controller = CameraController(first, ResolutionPreset.medium, enableAudio: false);
+      await _controller!.initialize();
+      if (!mounted) return;
+      setState(() => _isReady = true);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _takePicture() async {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+    try {
+      final xfile = await _controller!.takePicture();
+      if (!mounted) return;
+      Navigator.of(context).pop(xfile.path);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error taking picture: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Camera')),
+      body: _error != null
+          ? Center(child: Text('Camera error: $_error'))
+          : !_isReady
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(children: [
+                  CameraPreview(_controller!),
+                  Positioned(bottom: 24, left: 0, right: 0, child: Center(child: FloatingActionButton(onPressed: _takePicture, child: const Icon(Icons.camera))))
+                ]),
+    );
   }
 }

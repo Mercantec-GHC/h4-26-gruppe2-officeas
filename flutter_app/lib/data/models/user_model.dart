@@ -3,6 +3,7 @@ class UserModel {
   final String name;
   final String email;
   final String? departmentId;
+  final String? avatarUrl;
   final String? departmentName;
   final int feedbackRating;
   final DateTime createdAt;
@@ -13,6 +14,7 @@ class UserModel {
     required this.name,
     required this.email,
     this.departmentId,
+    this.avatarUrl,
     this.departmentName,
     this.feedbackRating = 0,
     required this.createdAt,
@@ -36,6 +38,7 @@ class UserModel {
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       departmentId: json['department_id'],
+      avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? null,
       departmentName: json['department']?['name'],
       feedbackRating: json['feedback_rating'] ?? 0,
       createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
@@ -49,6 +52,7 @@ class UserModel {
       'name': name,
       'email': email,
       'department_id': departmentId,
+      'avatar_url': avatarUrl,
       'feedback_rating': feedbackRating,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
