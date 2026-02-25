@@ -1,4 +1,4 @@
-.PHONY: help up down ps logs restart seed db-reset backend-build backend-run
+.PHONY: help up down ps logs restart seed db-reset backend-build backend-run test test-v
 
 .DEFAULT_GOAL := help
 
@@ -14,6 +14,8 @@ help:
 	@echo "  make db-reset     - Clean DB (truncate all) and re-run migrations + seed"
 	@echo "  make backend-build - Build Go backend"
 	@echo "  make backend-run  - Run Go backend locally (requires DATABASE_URL)"
+	@echo "  make test         - Run Go tests (gobackend, concise output)"
+	@echo "  make test-v       - Run Go tests with verbose output"
 
 up:
 	docker compose up -d
@@ -44,3 +46,9 @@ backend-build:
 
 backend-run:
 	cd gobackend && go run .
+
+test:
+	cd gobackend && $(shell go env GOPATH)/bin/gotestsum --format testdox -- ./handlers ./seed
+
+test-v:
+	cd gobackend && go test ./handlers ./seed -v
