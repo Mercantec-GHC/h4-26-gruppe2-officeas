@@ -31,6 +31,11 @@ type LoginResponse struct {
 	User  models.User `json:"user"`
 }
 
+type PendingApprovalResponse struct {
+	Message string      `json:"message"`
+	User    models.User `json:"user"`
+}
+
 type RegisterRequest struct {
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
@@ -103,6 +108,11 @@ func (h Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !user.IsApproved {
+		http.Error(w, "Account pending HR approval", http.StatusForbidden)
+		return
+	}
+
 	// Generate JWT token
 	token, err := h.generateToken(user.Id.String(), user.Email)
 	if err != nil {
@@ -163,6 +173,12 @@ func (h Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var requestedDepartment models.Department
+	if err := h.DB.First(&requestedDepartment, "id = ?", req.DepartmentId).Error; err != nil {
+		http.Error(w, "Invalid department", http.StatusBadRequest)
+		return
+	}
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -172,14 +188,19 @@ func (h Auth) Register(w http.ResponseWriter, r *http.Request) {
 
 	// Create user
 	user := models.User{
-		Id:           uuid.New(),
-		Name:         req.Name,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		DepartmentId: req.DepartmentId,
+		Id:               uuid.New(),
+		Name:             req.Name,
+		Email:            req.Email,
+		PasswordHash:     string(hashedPassword),
+		DepartmentId:     req.DepartmentId,
+		IsApproved:       false,
+		ApprovedAt:       nil,
+		ApprovedByUserId: nil,
 	}
 
-	if err := h.DB.Create(&user).Error; err != nil {
+	if err := h.DB.
+		Select("Id", "Name", "Email", "PasswordHash", "DepartmentId", "IsApproved", "ApprovedAt", "ApprovedByUserId").
+		Create(&user).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -187,18 +208,11 @@ func (h Auth) Register(w http.ResponseWriter, r *http.Request) {
 	// Load department relation
 	h.DB.Preload("Department").First(&user, "id = ?", user.Id)
 
-	// Generate JWT token
-	token, err := h.generateToken(user.Id.String(), user.Email)
-	if err != nil {
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(LoginResponse{
-		Token: token,
-		User:  user,
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(PendingApprovalResponse{
+		Message: "Registration received. Your account must be approved by HR/Ledelse before login.",
+		User:    user,
 	})
 }
 
@@ -261,23 +275,48 @@ func (h Auth) SSOLogin(w http.ResponseWriter, r *http.Request) {
 			}
 			departmentId = dept.Id
 		}
-
-		user = models.User{
-			Id:           uuid.New(),
-			Name:         req.Name,
-			Email:        req.Email,
-			PasswordHash: "", // No password for SSO users
-			DepartmentId: departmentId,
+		if departmentId != uuid.Nil {
+			var department models.Department
+			if err := h.DB.First(&department, "id = ?", departmentId).Error; err != nil {
+				http.Error(w, "Invalid department", http.StatusBadRequest)
+				return
+			}
 		}
 
-		if err := h.DB.Create(&user).Error; err != nil {
+		user = models.User{
+			Id:               uuid.New(),
+			Name:             req.Name,
+			Email:            req.Email,
+			PasswordHash:     "", // No password for SSO users
+			DepartmentId:     departmentId,
+			IsApproved:       false,
+			ApprovedAt:       nil,
+			ApprovedByUserId: nil,
+		}
+
+		if err := h.DB.
+			Select("Id", "Name", "Email", "PasswordHash", "DepartmentId", "IsApproved", "ApprovedAt", "ApprovedByUserId").
+			Create(&user).Error; err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		h.DB.Preload("Department").First(&user, "id = ?", user.Id)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(PendingApprovalResponse{
+			Message: "SSO registration received. Your account must be approved by HR/Ledelse before login.",
+			User:    user,
+		})
+		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !user.IsApproved {
+		http.Error(w, "Account pending HR approval", http.StatusForbidden)
 		return
 	}
 
@@ -450,21 +489,39 @@ func (h Auth) GitHubCallback(w http.ResponseWriter, r *http.Request) {
 		}
 
 		user = models.User{
-			Id:           uuid.New(),
-			Name:         userName,
-			Email:        githubUser.Email,
-			PasswordHash: "", // No password for SSO users
-			DepartmentId: dept.Id,
+			Id:               uuid.New(),
+			Name:             userName,
+			Email:            githubUser.Email,
+			PasswordHash:     "", // No password for SSO users
+			DepartmentId:     dept.Id,
+			IsApproved:       false,
+			ApprovedAt:       nil,
+			ApprovedByUserId: nil,
 		}
 
-		if err := h.DB.Create(&user).Error; err != nil {
+		if err := h.DB.
+			Select("Id", "Name", "Email", "PasswordHash", "DepartmentId", "IsApproved", "ApprovedAt", "ApprovedByUserId").
+			Create(&user).Error; err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		h.DB.Preload("Department").First(&user, "id = ?", user.Id)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(PendingApprovalResponse{
+			Message: "SSO registration received. Your account must be approved by HR/Ledelse before login.",
+			User:    user,
+		})
+		return
 	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !user.IsApproved {
+		http.Error(w, "Account pending HR approval", http.StatusForbidden)
 		return
 	}
 

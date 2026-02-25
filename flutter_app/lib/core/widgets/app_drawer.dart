@@ -11,6 +11,7 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthBloc>().currentUser;
     final showTickets = isItSupportDepartment(user);
+    final showApprovals = canApproveAccounts(user);
 
     return Drawer(
       child: ListView(
@@ -54,6 +55,15 @@ class AppDrawer extends StatelessWidget {
               Navigator.of(context).pushNamed('/tickets/new');
             },
           ),
+          if (showApprovals)
+            ListTile(
+              leading: const Icon(Icons.verified_user),
+              title: const Text('Approve accounts'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushNamed('/users/approvals');
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.calendar_month),
             title: const Text('Skema'),

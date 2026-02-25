@@ -5,6 +5,9 @@ class UserModel {
   final String? departmentId;
   final String? avatarUrl;
   final String? departmentName;
+  final bool isApproved;
+  final DateTime? approvedAt;
+  final String? approvedByUserId;
   final int feedbackRating;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -16,6 +19,9 @@ class UserModel {
     this.departmentId,
     this.avatarUrl,
     this.departmentName,
+    this.isApproved = true,
+    this.approvedAt,
+    this.approvedByUserId,
     this.feedbackRating = 0,
     required this.createdAt,
     required this.updatedAt,
@@ -26,6 +32,7 @@ class UserModel {
       id: '',
       name: '',
       email: '',
+      isApproved: false,
       feedbackRating: 0,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -40,9 +47,18 @@ class UserModel {
       departmentId: json['department_id'],
       avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? null,
       departmentName: json['department']?['name'],
+      isApproved: json['is_approved'] ?? true,
+      approvedAt: json['approved_at'] != null
+          ? DateTime.tryParse(json['approved_at'])
+          : null,
+      approvedByUserId: json['approved_by_user_id'],
       feedbackRating: json['feedback_rating'] ?? 0,
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
-      updatedAt: DateTime.parse(json['updated_at'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+      updatedAt: DateTime.parse(
+        json['updated_at'] ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 
@@ -53,6 +69,9 @@ class UserModel {
       'email': email,
       'department_id': departmentId,
       'avatar_url': avatarUrl,
+      'is_approved': isApproved,
+      'approved_at': approvedAt?.toIso8601String(),
+      'approved_by_user_id': approvedByUserId,
       'feedback_rating': feedbackRating,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),

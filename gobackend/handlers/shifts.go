@@ -27,9 +27,20 @@ type Shifts struct {
 // @Security     BearerAuth
 // @Router       /shifts [get]
 func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
-	var list []models.Shift
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	if err := h.DB.Preload("User").Find(&list).Error; err != nil {
+	var list []models.Shift
+	query := h.DB.WithContext(r.Context()).Preload("User")
+
+	if !isLedelse(currentUser) && !isHR(currentUser) {
+		query = query.Where("user_id = ?", currentUser.Id)
+	}
+
+	if err := query.Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -55,15 +66,26 @@ func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var s models.Shift
 
-	if err := h.DB.Preload("User").First(&s, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Preload("User").First(&s, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "shift not found", http.StatusNotFound)
 			return
 		}
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !isLedelse(currentUser) && !isHR(currentUser) && s.UserId != currentUser.Id {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -229,9 +251,20 @@ func (h Shifts) ListByUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !isLedelse(currentUser) && !isHR(currentUser) && userId != currentUser.Id {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	var list []models.Shift
 
-	if err := h.DB.Preload("User").Where("user_id = ?", userId).Find(&list).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Preload("User").Where("user_id = ?", userId).Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -248,8 +281,8 @@ type GenerateShiftsRequest struct {
 
 // GenerateShiftsResponse is the response for POST /shifts/generate
 type GenerateShiftsResponse struct {
-	Created []models.Shift `json:"created"`
-	Warnings []string      `json:"warnings,omitempty"`
+	Created  []models.Shift `json:"created"`
+	Warnings []string       `json:"warnings,omitempty"`
 }
 
 // Generate godoc
@@ -283,14 +316,14 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid start_date (use YYYY-MM-DD)", http.StatusBadRequest)
 		return
 	}
-	
+
 	endDate, err := time.ParseInLocation("2006-01-02", req.EndDate, loc)
-	
+
 	if err != nil {
 		http.Error(w, "invalid end_date (use YYYY-MM-DD)", http.StatusBadRequest)
 		return
 	}
-	
+
 	if endDate.Before(startDate) {
 		http.Error(w, "end_date must be >= start_date", http.StatusBadRequest)
 		return
@@ -298,7 +331,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 	// Load departments the same way as GET /departments, but with users
 	var departments []models.Department
-	
+
 	if err := h.DB.Preload("Users").Find(&departments).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -306,7 +339,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 	// Load approved absences overlapping the range
 	var absences []models.AbsenceRequest
-	
+
 	if err := h.DB.Where("status = ?", models.RequestStatusApproved).
 		Where("end_date >= ?", startDate).
 		Where("start_date <= ?", endDate).
@@ -319,17 +352,17 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 	absentSet := make(map[string]bool)
 	for _, a := range absences {
 		rangeStart := startDate
-	
+
 		if a.StartDate.After(rangeStart) {
 			rangeStart = a.StartDate
 		}
-	
+
 		rangeEnd := endDate
-	
+
 		if a.EndDate.Before(rangeEnd) {
 			rangeEnd = a.EndDate
 		}
-	
+
 		for d := rangeStart; !d.After(rangeEnd); d = d.AddDate(0, 0, 1) {
 			key := a.UserId.String() + "|" + d.Format("2006-01-02")
 			absentSet[key] = true
@@ -338,7 +371,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 	// Initialize assigned-shift count per user (all users from departments)
 	assignedShifts := make(map[uuid.UUID]int)
-	
+
 	for i := range departments {
 		for _, u := range departments[i].Users {
 			assignedShifts[u.Id] = 0
@@ -351,17 +384,17 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 	// Iterate each day in range
 	for day := startDate; !day.After(endDate); day = day.AddDate(0, 0, 1) {
 		dayStr := day.Format("2006-01-02")
-	
+
 		for _, dept := range departments {
 			// Assignable = department users not absent on this day
 			var assignable []models.User
-	
+
 			for _, u := range dept.Users {
 				if !absentSet[u.Id.String()+"|"+dayStr] {
 					assignable = append(assignable, u)
 				}
 			}
-	
+
 			if len(assignable) == 0 {
 				warnings = append(warnings, "no assignable users for department "+dept.Name+" on "+dayStr)
 				continue
@@ -374,15 +407,15 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 			// Morning slot: 08:00-12:00 — pick 2 (or 1)
 			morningCount := 2
-	
+
 			if len(assignable) < 2 {
 				morningCount = len(assignable)
 			}
-	
+
 			morningUsers := assignable[:morningCount]
 			startMorning := time.Date(day.Year(), day.Month(), day.Day(), 8, 0, 0, 0, loc)
 			endMorning := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, loc)
-	
+
 			for _, u := range morningUsers {
 				toCreate = append(toCreate, models.Shift{
 					Id:        uuid.New(),
@@ -390,50 +423,50 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 					StartTime: startMorning,
 					EndTime:   endMorning,
 				})
-	
+
 				assignedShifts[u.Id]++
 			}
 
 			// Afternoon slot: 12:00-16:00 — prefer users not in morning; fill with morning if needed
 			afternoonPool := make([]models.User, 0, len(assignable))
 			morningIDs := make(map[uuid.UUID]bool)
-	
+
 			for _, u := range morningUsers {
 				morningIDs[u.Id] = true
 			}
-	
+
 			for _, u := range assignable {
 				if !morningIDs[u.Id] {
 					afternoonPool = append(afternoonPool, u)
 				}
 			}
-	
+
 			sort.Slice(afternoonPool, func(i, j int) bool {
 				return assignedShifts[afternoonPool[i].Id] < assignedShifts[afternoonPool[j].Id]
 			})
 			// Need 2 for afternoon; take from afternoonPool first, then from morningUsers
-	
+
 			var afternoonUsers []models.User
-	
+
 			for _, u := range afternoonPool {
 				if len(afternoonUsers) >= 2 {
 					break
 				}
-	
+
 				afternoonUsers = append(afternoonUsers, u)
 			}
-	
+
 			for _, u := range morningUsers {
 				if len(afternoonUsers) >= 2 {
 					break
 				}
-	
+
 				afternoonUsers = append(afternoonUsers, u)
 			}
-	
+
 			startAfternoon := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, loc)
 			endAfternoon := time.Date(day.Year(), day.Month(), day.Day(), 16, 0, 0, 0, loc)
-	
+
 			for _, u := range afternoonUsers {
 				toCreate = append(toCreate, models.Shift{
 					Id:        uuid.New(),
@@ -441,7 +474,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 					StartTime: startAfternoon,
 					EndTime:   endAfternoon,
 				})
-	
+
 				assignedShifts[u.Id]++
 			}
 		}
@@ -454,7 +487,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 		}
-	
+
 		return nil
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -463,7 +496,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 	// Notifications for each created shift
 	relatedType := "shift"
-	
+
 	for i := range toCreate {
 		createNotification(
 			h.DB,
@@ -489,10 +522,10 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 // RegisterShifts adds shift routes
 func RegisterShifts(router *mux.Router, h Shifts, prefix string) {
 	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix, h.Create).Methods("POST")
-	router.HandleFunc(prefix+"/generate", h.Generate).Methods("POST")
+	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(ShiftManage))).Methods("POST")
+	router.Handle(prefix+"/generate", chainWithMiddlewares(h.Generate, RequirePermission(ShiftManage))).Methods("POST")
 	router.HandleFunc(prefix+"/user/{userId}", h.ListByUser).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Update, RequirePermission(ShiftManage))).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(ShiftManage))).Methods("DELETE")
 }

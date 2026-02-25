@@ -22,7 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<GitHubSignInRequested>(_onGitHubSignInRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CheckAuthStatus>(_onCheckAuthStatus);
-    
+
     // Check auth status on initialization
     _checkAuthStatusOnInit();
   }
@@ -66,12 +66,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.register(
+      final result = await _authService.register(
         name: event.name,
         email: event.email,
         password: event.password,
         departmentId: event.departmentId,
       );
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));
@@ -86,7 +100,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle();
+
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));
@@ -101,7 +130,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.signInWithGitHub();
+      final result = await _authService.signInWithGitHub();
+
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import '../../data/models/auth_response_model.dart';
+import '../../data/models/auth_result_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
 class AuthService {
@@ -38,7 +39,7 @@ class AuthService {
   }
 
   // Regular registration
-  Future<AuthResponseModel> register({
+  Future<AuthResultModel> register({
     required String name,
     required String email,
     required String password,
@@ -53,7 +54,7 @@ class AuthService {
   }
 
   // Google Sign-In
-  Future<AuthResponseModel> signInWithGoogle() async {
+  Future<AuthResultModel> signInWithGoogle() async {
     // Google Sign-In on web requires additional setup
     // throws helpful error on web
     if (kIsWeb) {
@@ -100,7 +101,7 @@ class AuthService {
   }
 
   // GitHub Sign-In
-  Future<AuthResponseModel> signInWithGitHub() async {
+  Future<AuthResultModel> signInWithGitHub() async {
     try {
       // Build the authorization URL
       final url = Uri.https('github.com', '/login/oauth/authorize', {

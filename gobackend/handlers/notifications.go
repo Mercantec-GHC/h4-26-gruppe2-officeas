@@ -214,11 +214,11 @@ func (h Notifications) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterNotifications adds notification routes.
 func RegisterNotifications(router *mux.Router, h Notifications, prefix string) {
-	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix+"/unread-count", h.UnreadCount).Methods("GET")
-	router.HandleFunc(prefix+"/{id}/read", h.MarkRead).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}/unread", h.MarkUnread).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(NotificationRead))).Methods("GET")
+	router.Handle(prefix+"/unread-count", chainWithMiddlewares(h.UnreadCount, RequirePermission(NotificationRead))).Methods("GET")
+	router.Handle(prefix+"/{id}/read", chainWithMiddlewares(h.MarkRead, RequirePermission(NotificationRead))).Methods("PUT")
+	router.Handle(prefix+"/{id}/unread", chainWithMiddlewares(h.MarkUnread, RequirePermission(NotificationRead))).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(NotificationRead))).Methods("DELETE")
 }
 
 func createNotification(
