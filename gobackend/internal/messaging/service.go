@@ -515,14 +515,15 @@ func (s *Service) getMemberIDs(conversationID uuid.UUID) ([]uuid.UUID, error) {
 // conversationToDTO builds a DTO with member info and unread count.
 func (s *Service) conversationToDTO(conv models.Conversation, forUserID uuid.UUID) (*models.ConversationDTO, error) {
 	var members []models.ConversationMember
-	s.db.Preload("User").Where("conversation_id = ?", conv.Id).Find(&members)
+	s.db.Preload("User.Department").Where("conversation_id = ?", conv.Id).Find(&members)
 
 	memberDTOs := make([]models.ConversationMemberDTO, 0, len(members))
 	for _, m := range members {
 		memberDTOs = append(memberDTOs, models.ConversationMemberDTO{
-			UserId:   m.UserId,
-			UserName: m.User.Name,
-			JoinedAt: m.JoinedAt,
+			UserId:         m.UserId,
+			UserName:       m.User.Name,
+			DepartmentName: m.User.Department.Name,
+			JoinedAt:       m.JoinedAt,
 		})
 	}
 

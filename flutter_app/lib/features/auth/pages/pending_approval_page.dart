@@ -11,6 +11,11 @@ class PendingApprovalPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final secondaryText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -31,13 +36,15 @@ class PendingApprovalPage extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                          color: isDark
+                              ? scheme.surfaceContainerHighest
+                              : Colors.orange.shade50,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
                           Icons.hourglass_top_rounded,
                           size: 40,
-                          color: Colors.orange.shade700,
+                          color: scheme.tertiary,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -53,10 +60,7 @@ class PendingApprovalPage extends StatelessWidget {
                       Text(
                         message,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.grey.shade700,
-                        ),
+                        style: TextStyle(fontSize: 15, color: secondaryText),
                       ),
                       const SizedBox(height: 20),
                       SizedBox(

@@ -20,10 +20,12 @@ class CreateAbsenceRequestDialog extends StatefulWidget {
   });
 
   @override
-  State<CreateAbsenceRequestDialog> createState() => _CreateAbsenceRequestDialogState();
+  State<CreateAbsenceRequestDialog> createState() =>
+      _CreateAbsenceRequestDialogState();
 }
 
-class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog> {
+class _CreateAbsenceRequestDialogState
+    extends State<CreateAbsenceRequestDialog> {
   late DateTime _startDate;
   late DateTime _endDate;
   late AbsenceType _absenceType;
@@ -142,6 +144,10 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final secondaryText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final durationDays = _endDate.difference(_startDate).inDays + 1;
 
     return AlertDialog(
@@ -159,8 +165,8 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
                   Text(
                     'Absence Type',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 6.0),
                   DropdownButton<AbsenceType>(
@@ -200,15 +206,16 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
                       Text(
                         'Start Date',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: secondaryText,
+                        ),
                       ),
                       const SizedBox(height: 4.0),
                       Text(
                         DateFormat('MMM d, yyyy').format(_startDate),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Colors.blue.shade700,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: scheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -243,15 +250,16 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
                       Text(
                         'End Date',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade700,
-                            ),
+                          fontWeight: FontWeight.bold,
+                          color: secondaryText,
+                        ),
                       ),
                       const SizedBox(height: 4.0),
                       Text(
                         DateFormat('MMM d, yyyy').format(_endDate),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Colors.blue.shade700,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: scheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -278,21 +286,27 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
             Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                border: Border.all(color: Colors.blue.shade200),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? scheme.surfaceContainerHighest
+                    : Colors.blue.shade50,
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? scheme.outlineVariant
+                      : Colors.blue.shade200,
+                ),
                 borderRadius: BorderRadius.circular(6.0),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info, size: 16, color: Colors.blue),
+                  Icon(Icons.info, size: 16, color: scheme.primary),
                   const SizedBox(width: 8.0),
                   Expanded(
                     child: Text(
                       'Duration: $durationDays days',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: scheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -315,7 +329,9 @@ class _CreateAbsenceRequestDialogState extends State<CreateAbsenceRequestDialog>
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.check, size: 16),
-          label: _isLoading ? const Text('Creating...') : const Text('Request Absence'),
+          label: _isLoading
+              ? const Text('Creating...')
+              : const Text('Request Absence'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green.shade600,
             foregroundColor: Colors.white,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../bloc/tickets_bloc.dart';
 import '../bloc/tickets_event.dart';
@@ -52,7 +53,10 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Opret ticket')),
+      appBar: AppBar(
+        title: const Text('Opret ticket'),
+        actions: const [AppTopBarActions()],
+      ),
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
           if (state is TicketsError) {

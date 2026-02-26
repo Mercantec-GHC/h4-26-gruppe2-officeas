@@ -7,6 +7,7 @@ import '../../../domain/entities/absence_request_entity.dart';
 import '../../../domain/repositories/shift_repository.dart';
 import '../../../domain/repositories/absence_request_repository.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../dialogs/create_absence_request_dialog.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -24,49 +25,54 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-    /// Cancel absence request
-    Future<void> _onCancelAbsenceRequest(AbsenceRequestEntity request) async {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Cancel Absence Request'),
-          content: const Text('Are you sure you want to cancel this absence request?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Yes'),
-            ),
-          ],
+  /// Cancel absence request
+  Future<void> _onCancelAbsenceRequest(AbsenceRequestEntity request) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Absence Request'),
+        content: const Text(
+          'Are you sure you want to cancel this absence request?',
         ),
-      );
-      if (confirm != true) return;
-      final result = await widget.absenceRequestRepository.cancelAbsenceRequest(request.id);
-      result.when(
-        success: (_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Absence request cancelled'),
-              backgroundColor: Colors.grey,
-              duration: Duration(seconds: 3),
-            ),
-          );
-          _loadAbsenceRequests();
-        },
-        failure: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: ${error.message}'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        },
-      );
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final result = await widget.absenceRequestRepository.cancelAbsenceRequest(
+      request.id,
+    );
+    result.when(
+      success: (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Absence request cancelled'),
+            backgroundColor: Colors.grey,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        _loadAbsenceRequests();
+      },
+      failure: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${error.message}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      },
+    );
+  }
+
   late DateTime? _startDate;
   late DateTime? _endDate;
   late DateTime _focusedDate;
@@ -102,7 +108,9 @@ class _CalendarPageState extends State<CalendarPage> {
           failure: (error) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Fejl ved indlæsning af skifter: ${error.message}'),
+                content: Text(
+                  'Fejl ved indlæsning af skifter: ${error.message}',
+                ),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 4),
               ),
@@ -115,7 +123,8 @@ class _CalendarPageState extends State<CalendarPage> {
 
   /// Load absence requests from database
   Future<void> _loadAbsenceRequests() async {
-    final result = await widget.absenceRequestRepository.getAllAbsenceRequests();
+    final result = await widget.absenceRequestRepository
+        .getAllAbsenceRequests();
 
     if (mounted) {
       result.when(
@@ -127,7 +136,9 @@ class _CalendarPageState extends State<CalendarPage> {
         failure: (error) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Fejl ved indlæsning af absence requests: ${error.message}'),
+              content: Text(
+                'Fejl ved indlæsning af absence requests: ${error.message}',
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 4),
             ),
@@ -149,8 +160,7 @@ class _CalendarPageState extends State<CalendarPage> {
   /// Get shifts for a date range
   List<ShiftEntity> _getShiftsForRange(DateTime start, DateTime end) {
     return _shifts.where((shift) {
-      return shift.startTime.isAfter(start) &&
-              shift.startTime.isBefore(end) ||
+      return shift.startTime.isAfter(start) && shift.startTime.isBefore(end) ||
           shift.startTime.isAtSameMomentAs(start) ||
           shift.startTime.isAtSameMomentAs(end);
     }).toList();
@@ -159,7 +169,7 @@ class _CalendarPageState extends State<CalendarPage> {
   /// Show absence request dialog
   void _showAbsenceRequestDialog() {
     final userId = context.read<AuthBloc>().currentUser?.id ?? '';
-    
+
     if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -192,27 +202,31 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Calendar'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
         actions: [
+          const AppTopBarActions(),
           // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : () {
-              _loadShifts();
-              _loadAbsenceRequests();
-            },
+            onPressed: _isLoading
+                ? null
+                : () {
+                    _loadShifts();
+                    _loadAbsenceRequests();
+                  },
             tooltip: 'Refresh shifts and absence requests',
           ),
         ],
       ),
       body: _isLoading && _shifts.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
                 // Fixed Calendar at top
@@ -225,22 +239,34 @@ class _CalendarPageState extends State<CalendarPage> {
                         child: Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest
+                                : Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: Colors.blue.shade200),
+                            border: Border.all(
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Theme.of(context).colorScheme.outlineVariant
+                                  : Colors.blue.shade200,
+                            ),
                           ),
                           child: TableCalendar(
                             firstDay: DateTime.utc(2020, 1, 1),
                             lastDay: DateTime.utc(2030, 12, 31),
                             focusedDay: _focusedDate,
                             selectedDayPredicate: (day) {
-                              if (_startDate == null && _endDate == null) return false;
+                              if (_startDate == null && _endDate == null)
+                                return false;
                               if (_startDate != null && _endDate == null) {
                                 return isSameDay(_startDate, day);
                               }
                               // If both dates are set, highlight range
                               return day.isAfter(_startDate!) &&
-                                  day.isBefore(_endDate!) ||
+                                      day.isBefore(_endDate!) ||
                                   isSameDay(_startDate, day) ||
                                   isSameDay(_endDate, day);
                             },
@@ -250,7 +276,8 @@ class _CalendarPageState extends State<CalendarPage> {
                                 if (_startDate == null && _endDate == null) {
                                   // First selection - set start date
                                   _startDate = selectedDay;
-                                } else if (_startDate != null && _endDate == null) {
+                                } else if (_startDate != null &&
+                                    _endDate == null) {
                                   // Second selection - set end date
                                   if (selectedDay.isBefore(_startDate!)) {
                                     // If selected date is before start, swap them
@@ -272,22 +299,31 @@ class _CalendarPageState extends State<CalendarPage> {
                             },
                             calendarStyle: CalendarStyle(
                               defaultTextStyle: const TextStyle(fontSize: 12),
-                              weekendTextStyle: const TextStyle(fontSize: 12, color: Colors.red),
+                              weekendTextStyle: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.red,
+                              ),
                               selectedDecoration: BoxDecoration(
-                                color: Colors.blue.shade700,
+                                color: isDark
+                                    ? scheme.primary
+                                    : Colors.blue.shade700,
                                 shape: BoxShape.circle,
                               ),
                               todayDecoration: BoxDecoration(
-                                color: Colors.orange.shade300,
+                                color: isDark
+                                    ? scheme.tertiary
+                                    : Colors.orange.shade300,
                                 shape: BoxShape.circle,
                               ),
                               markerDecoration: BoxDecoration(
-                                color: Colors.blue.shade400,
+                                color: isDark
+                                    ? scheme.primary.withValues(alpha: 0.8)
+                                    : Colors.blue.shade400,
                                 shape: BoxShape.circle,
                               ),
                               outsideTextStyle: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade400,
+                                color: mutedText,
                               ),
                             ),
                             headerStyle: HeaderStyle(
@@ -296,22 +332,27 @@ class _CalendarPageState extends State<CalendarPage> {
                               titleTextStyle: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade700,
+                                color: isDark
+                                    ? scheme.primary
+                                    : Colors.blue.shade700,
                               ),
-                              leftChevronIcon: const Icon(
+                              leftChevronIcon: Icon(
                                 Icons.arrow_left,
                                 size: 20,
-                                color: Colors.blue,
+                                color: isDark ? scheme.primary : Colors.blue,
                               ),
-                              rightChevronIcon: const Icon(
+                              rightChevronIcon: Icon(
                                 Icons.arrow_right,
                                 size: 20,
-                                color: Colors.blue,
+                                color: isDark ? scheme.primary : Colors.blue,
                               ),
                             ),
                             daysOfWeekStyle: const DaysOfWeekStyle(
                               weekdayStyle: TextStyle(fontSize: 11),
-                              weekendStyle: TextStyle(fontSize: 11, color: Colors.red),
+                              weekendStyle: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                              ),
                             ),
                           ),
                         ),
@@ -333,8 +374,14 @@ class _CalendarPageState extends State<CalendarPage> {
                             Container(
                               padding: const EdgeInsets.all(8.0),
                               decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                border: Border.all(color: Colors.green.shade300),
+                                color: isDark
+                                    ? scheme.surfaceContainerHighest
+                                    : Colors.green.shade50,
+                                border: Border.all(
+                                  color: isDark
+                                      ? scheme.outlineVariant
+                                      : Colors.green.shade300,
+                                ),
                                 borderRadius: BorderRadius.circular(6.0),
                               ),
                               child: Column(
@@ -344,23 +391,35 @@ class _CalendarPageState extends State<CalendarPage> {
                                     _startDate == null && _endDate == null
                                         ? 'Select a date range'
                                         : _startDate != null && _endDate == null
-                                            ? 'Start date selected, select end date'
-                                            : 'Date Range Selected:',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        ? 'Start date selected, select end date'
+                                        : 'Date Range Selected:',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                   if (_startDate != null) ...[
                                     const SizedBox(height: 6.0),
                                     Row(
                                       children: [
-                                        const Icon(Icons.calendar_today, size: 14, color: Colors.green),
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 14,
+                                          color: isDark
+                                              ? scheme.primary
+                                              : Colors.green,
+                                        ),
                                         const SizedBox(width: 6.0),
                                         Expanded(
                                           child: Text(
                                             'Start: ${DateFormat('MMM d, yyyy').format(_startDate!)}',
-                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                  color: Colors.green.shade700,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: isDark
+                                                      ? scheme.primary
+                                                      : Colors.green.shade700,
                                                 ),
                                           ),
                                         ),
@@ -371,13 +430,24 @@ class _CalendarPageState extends State<CalendarPage> {
                                     const SizedBox(height: 4.0),
                                     Row(
                                       children: [
-                                        const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                                        Icon(
+                                          Icons.calendar_today,
+                                          size: 14,
+                                          color: isDark
+                                              ? scheme.primary
+                                              : Colors.blue,
+                                        ),
                                         const SizedBox(width: 6.0),
                                         Expanded(
                                           child: Text(
                                             'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}',
-                                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                  color: Colors.blue.shade700,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  color: isDark
+                                                      ? scheme.primary
+                                                      : Colors.blue.shade700,
                                                 ),
                                           ),
                                         ),
@@ -386,13 +456,19 @@ class _CalendarPageState extends State<CalendarPage> {
                                     const SizedBox(height: 6.0),
                                     Text(
                                       'Duration: ${_endDate!.difference(_startDate!).inDays + 1} days',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            color: Colors.purple.shade700,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: isDark
+                                                ? scheme.primary
+                                                : Colors.purple.shade700,
                                             fontWeight: FontWeight.bold,
                                           ),
                                     ),
                                   ],
-                                  if (_startDate != null && _endDate != null) ...[
+                                  if (_startDate != null &&
+                                      _endDate != null) ...[
                                     const SizedBox(height: 8.0),
                                     SizedBox(
                                       width: double.infinity,
@@ -406,7 +482,9 @@ class _CalendarPageState extends State<CalendarPage> {
                                         icon: const Icon(Icons.clear, size: 16),
                                         label: const Text('Clear Range'),
                                         style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 6.0,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -415,12 +493,20 @@ class _CalendarPageState extends State<CalendarPage> {
                                       width: double.infinity,
                                       child: ElevatedButton.icon(
                                         onPressed: _showAbsenceRequestDialog,
-                                        icon: const Icon(Icons.event_busy, size: 16),
+                                        icon: const Icon(
+                                          Icons.event_busy,
+                                          size: 16,
+                                        ),
                                         label: const Text('Request Absence'),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange.shade600,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                                          backgroundColor:
+                                              Colors.orange.shade600,
+                                          foregroundColor: isDark
+                                              ? scheme.onTertiary
+                                              : Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 6.0,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -434,8 +520,14 @@ class _CalendarPageState extends State<CalendarPage> {
                               Container(
                                 padding: const EdgeInsets.all(8.0),
                                 decoration: BoxDecoration(
-                                  color: Colors.purple.shade50,
-                                  border: Border.all(color: Colors.purple.shade300),
+                                  color: isDark
+                                      ? scheme.surfaceContainerHighest
+                                      : Colors.purple.shade50,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? scheme.outlineVariant
+                                        : Colors.purple.shade300,
+                                  ),
                                   borderRadius: BorderRadius.circular(6.0),
                                 ),
                                 child: Column(
@@ -443,24 +535,39 @@ class _CalendarPageState extends State<CalendarPage> {
                                   children: [
                                     Text(
                                       'Shifts in selected period:',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.purple.shade700,
+                                            color: isDark
+                                                ? scheme.primary
+                                                : Colors.purple.shade700,
                                           ),
                                     ),
                                     const SizedBox(height: 8.0),
                                     _buildShiftsList(
-                                      _getShiftsForRange(_startDate!, _endDate!),
+                                      _getShiftsForRange(
+                                        _startDate!,
+                                        _endDate!,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ] else if (_startDate != null && _endDate == null) ...[
+                            ] else if (_startDate != null &&
+                                _endDate == null) ...[
                               Container(
                                 padding: const EdgeInsets.all(8.0),
                                 decoration: BoxDecoration(
-                                  color: Colors.amber.shade50,
-                                  border: Border.all(color: Colors.amber.shade300),
+                                  color: isDark
+                                      ? scheme.surfaceContainerHighest
+                                      : Colors.amber.shade50,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? scheme.outlineVariant
+                                        : Colors.amber.shade300,
+                                  ),
                                   borderRadius: BorderRadius.circular(6.0),
                                 ),
                                 child: Column(
@@ -468,13 +575,20 @@ class _CalendarPageState extends State<CalendarPage> {
                                   children: [
                                     Text(
                                       'Shifts on ${DateFormat('MMM d, yyyy').format(_startDate!)}:',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.amber.shade700,
+                                            color: isDark
+                                                ? scheme.primary
+                                                : Colors.amber.shade700,
                                           ),
                                     ),
                                     const SizedBox(height: 8.0),
-                                    _buildShiftsList(_getShiftsForDate(_startDate!)),
+                                    _buildShiftsList(
+                                      _getShiftsForDate(_startDate!),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -484,8 +598,14 @@ class _CalendarPageState extends State<CalendarPage> {
                             Container(
                               padding: const EdgeInsets.all(8.0),
                               decoration: BoxDecoration(
-                                color: Colors.red.shade50,
-                                border: Border.all(color: Colors.red.shade300),
+                                color: isDark
+                                    ? scheme.surfaceContainerHighest
+                                    : Colors.red.shade50,
+                                border: Border.all(
+                                  color: isDark
+                                      ? scheme.outlineVariant
+                                      : Colors.red.shade300,
+                                ),
                                 borderRadius: BorderRadius.circular(6.0),
                               ),
                               child: Column(
@@ -493,9 +613,14 @@ class _CalendarPageState extends State<CalendarPage> {
                                 children: [
                                   Text(
                                     'Your Absence Requests:',
-                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.red.shade700,
+                                          color: isDark
+                                              ? scheme.primary
+                                              : Colors.red.shade700,
                                         ),
                                   ),
                                   const SizedBox(height: 8.0),
@@ -523,8 +648,10 @@ class _CalendarPageState extends State<CalendarPage> {
           child: Text(
             'No absence requests',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
-                ),
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+            ),
           ),
         ),
       );
@@ -553,7 +680,9 @@ class _CalendarPageState extends State<CalendarPage> {
 
     return Card(
       elevation: 2.0,
-      color: Colors.white,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4.0),
         side: BorderSide(color: statusColor, width: 2.0),
@@ -573,7 +702,8 @@ class _CalendarPageState extends State<CalendarPage> {
                     children: [
                       Text(
                         request.type.displayName,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: statusColor,
                             ),
@@ -584,14 +714,18 @@ class _CalendarPageState extends State<CalendarPage> {
                       Text(
                         'Requested: ${DateFormat('MMM d, yyyy').format(request.createdAt)}',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Colors.grey.shade700,
-                            ),
+                          color: Theme.of(context).textTheme.bodyMedium?.color
+                              ?.withValues(alpha: 0.72),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6.0,
+                    vertical: 2.0,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withAlpha((0.2 * 255).round()),
                     border: Border.all(color: statusColor),
@@ -600,15 +734,18 @@ class _CalendarPageState extends State<CalendarPage> {
                   child: Text(
                     request.status.displayName,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 if (request.isPending)
                   TextButton(
                     onPressed: () => _onCancelAbsenceRequest(request),
-                    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
               ],
             ),
@@ -616,7 +753,13 @@ class _CalendarPageState extends State<CalendarPage> {
             // Date range
             Row(
               children: [
-                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+                ),
                 const SizedBox(width: 4.0),
                 Expanded(
                   child: Text(
@@ -641,8 +784,10 @@ class _CalendarPageState extends State<CalendarPage> {
           child: Text(
             'No shifts scheduled',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
-                ),
+              color: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+            ),
           ),
         ),
       );
@@ -668,7 +813,9 @@ class _CalendarPageState extends State<CalendarPage> {
 
     return Card(
       elevation: 2.0,
-      color: Colors.white,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(4.0),
         side: BorderSide(color: borderColor, width: 2.0),
@@ -688,7 +835,8 @@ class _CalendarPageState extends State<CalendarPage> {
                     children: [
                       Text(
                         shift.userName ?? 'Unknown User',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: backgroundColor,
                             ),
@@ -699,15 +847,19 @@ class _CalendarPageState extends State<CalendarPage> {
                       Text(
                         shift.formattedStartTime,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Colors.grey.shade700,
-                            ),
+                          color: Theme.of(context).textTheme.bodyMedium?.color
+                              ?.withValues(alpha: 0.72),
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (isActive)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6.0,
+                      vertical: 2.0,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.shade100,
                       border: Border.all(color: Colors.green),
@@ -716,9 +868,9 @@ class _CalendarPageState extends State<CalendarPage> {
                     child: Text(
                       'Active',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
@@ -727,7 +879,13 @@ class _CalendarPageState extends State<CalendarPage> {
             // Time range
             Row(
               children: [
-                const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+                ),
                 const SizedBox(width: 4.0),
                 Expanded(
                   child: Text(
@@ -741,4 +899,5 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
       ),
     );
-  }}
+  }
+}
