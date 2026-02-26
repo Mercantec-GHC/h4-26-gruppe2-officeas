@@ -21,6 +21,10 @@ const SeedFakeUserCount = 80
 const mercantecTestEmail = "mercantec@mercantec.dk"
 const mercantecTestPassword = "Password123!"
 
+// E2E manager (Ledelse) for e2e tests that create/update/delete users.
+const E2EManagerEmail = "e2e-manager@test.com"
+const E2EManagerPassword = "Password123!"
+
 // fakeUser is used with go-faker to generate name and email.
 type fakeUser struct {
 	FirstName string `faker:"first_name"`
@@ -68,6 +72,37 @@ func SeedUsers(db *gorm.DB) error {
 		}
 	}
 
+	var deptLedelse models.Department
+	if err := db.Where("name = ?", "Ledelse").First(&deptLedelse).Error; err != nil {
+		return err
+	}
+
+	// E2E manager user (Ledelse) for e2e tests that create/update/delete users.
+	{
+		var existing models.User
+		if err := db.Where("email = ?", E2EManagerEmail).First(&existing).Error; err != nil {
+			hashed, err := bcrypt.GenerateFromPassword([]byte(E2EManagerPassword), bcrypt.DefaultCost)
+			
+			if err != nil {
+				return err
+			}
+
+			user := models.User{
+				Id:           uuid.New(),
+				Name:         "E-E Manager",
+				Email:        E2EManagerEmail,
+				PasswordHash: string(hashed),
+				DepartmentId: deptLedelse.Id,
+				IsApproved:   true,
+				ApprovedAt:   func() *time.Time { now := time.Now(); return &now }(),
+			}
+			
+			if err := db.Create(&user).Error; err != nil {
+				return err
+			}
+		}
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(SeedPassword), bcrypt.DefaultCost)
 
 	if err != nil {
@@ -75,7 +110,7 @@ func SeedUsers(db *gorm.DB) error {
 	}
 
 	// Faker-generated users (random departments)
-	seenEmails := map[string]struct{}{mercantecTestEmail: {}}
+	seenEmails := map[string]struct{}{mercantecTestEmail: {}, E2EManagerEmail: {}}
 
 	for i := 0; i < SeedFakeUserCount; i++ {
 		var fu fakeUser

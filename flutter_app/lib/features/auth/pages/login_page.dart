@@ -56,6 +56,8 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -83,11 +85,13 @@ class _LoginPageState extends State<LoginPage> {
               return Container(
                 width: double.infinity,
                 height: double.infinity,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF0A66FF), Color(0xFF4B7CFF)],
+                    colors: isDark
+                        ? [scheme.surface, scheme.surfaceContainerHighest]
+                        : const [Color(0xFF0A66FF), Color(0xFF4B7CFF)],
                   ),
                 ),
                 child: SafeArea(
@@ -113,16 +117,21 @@ class _LoginPageState extends State<LoginPage> {
                                           Container(
                                             padding: const EdgeInsets.all(20),
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withAlpha(
-                                                (0.08 * 255).round(),
-                                              ),
+                                              color: isDark
+                                                  ? scheme
+                                                        .surfaceContainerHighest
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.08,
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(16),
                                             ),
-                                            child: const Icon(
+                                            child: Icon(
                                               Icons.business,
                                               size: 48,
-                                              color: Colors.white,
+                                              color: isDark
+                                                  ? scheme.primary
+                                                  : Colors.white,
                                             ),
                                           ),
                                           const SizedBox(height: 24),
@@ -132,7 +141,9 @@ class _LoginPageState extends State<LoginPage> {
                                                 .textTheme
                                                 .headlineLarge
                                                 ?.copyWith(
-                                                  color: Colors.white,
+                                                  color: isDark
+                                                      ? scheme.onSurface
+                                                      : Colors.white,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                           ),
@@ -143,7 +154,15 @@ class _LoginPageState extends State<LoginPage> {
                                                 .textTheme
                                                 .bodyLarge
                                                 ?.copyWith(
-                                                  color: Colors.white70,
+                                                  color: isDark
+                                                      ? Theme.of(context)
+                                                            .textTheme
+                                                            .bodyLarge
+                                                            ?.color
+                                                            ?.withValues(
+                                                              alpha: 0.78,
+                                                            )
+                                                      : Colors.white70,
                                                 ),
                                           ),
                                         ],
@@ -200,9 +219,15 @@ class _LoginPageState extends State<LoginPage> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.blue.shade50,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : Colors.blue.shade50,
           ),
-          child: Icon(Icons.business, size: 40, color: Colors.blue.shade700),
+          child: Icon(
+            Icons.business,
+            size: 40,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
@@ -216,9 +241,11 @@ class _LoginPageState extends State<LoginPage> {
           _isLogin
               ? 'Sign in to continue'
               : 'Create your account (requires HR/Ledelse approval)',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+          ),
         ),
         const SizedBox(height: 20),
 
@@ -230,7 +257,11 @@ class _LoginPageState extends State<LoginPage> {
               if (!_isLogin) ...[
                 TextFormField(
                   controller: _nameController,
-                  decoration: _inputDecoration('Full name', Icons.person),
+                  decoration: _inputDecoration(
+                    context,
+                    'Full name',
+                    Icons.person,
+                  ),
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Please enter your name' : null,
                 ),
@@ -238,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
               ],
               TextFormField(
                 controller: _emailController,
-                decoration: _inputDecoration('Email', Icons.email),
+                decoration: _inputDecoration(context, 'Email', Icons.email),
                 keyboardType: TextInputType.emailAddress,
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Please enter your email';
@@ -251,6 +282,7 @@ class _LoginPageState extends State<LoginPage> {
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
                 decoration: _inputDecoration(
+                  context,
                   'Password',
                   Icons.lock,
                   suffix: IconButton(
@@ -276,7 +308,11 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _departmentIdController,
-                  decoration: _inputDecoration('Department ID', Icons.business),
+                  decoration: _inputDecoration(
+                    context,
+                    'Department ID',
+                    Icons.business,
+                  ),
                   validator: (v) => v == null || v.isEmpty
                       ? 'Please enter department ID'
                       : null,
@@ -285,7 +321,7 @@ class _LoginPageState extends State<LoginPage> {
                 Text(
                   'After signup, your account is pending HR/Ledelse approval before you can log in.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.orange.shade800,
+                    color: Theme.of(context).colorScheme.tertiary,
                   ),
                 ),
               ],
@@ -331,7 +367,7 @@ class _LoginPageState extends State<LoginPage> {
                 ? null
                 : () => context.read<AuthBloc>().add(GoogleSignInRequested()),
             icon: Image.asset(
-              'assets/google_logo.png',
+              _googleLogoAsset(context),
               height: 20,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
@@ -347,7 +383,7 @@ class _LoginPageState extends State<LoginPage> {
                 ? null
                 : () => context.read<AuthBloc>().add(GitHubSignInRequested()),
             icon: Image.asset(
-              'assets/github_logo.png',
+              _githubLogoAsset(context),
               height: 20,
               errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
@@ -368,18 +404,35 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  String _googleLogoAsset(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? 'assets/google_logo_dark.png'
+        : 'assets/google_logo_light.png';
+  }
+
+  String _githubLogoAsset(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? 'assets/github_logo_dark.png'
+        : 'assets/github_logo_light.png';
+  }
+
   InputDecoration _inputDecoration(
+    BuildContext context,
     String label,
     IconData icon, {
     Widget? suffix,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
     return InputDecoration(
       prefixIcon: Icon(icon),
       labelText: label,
       suffixIcon: suffix,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: isDark ? scheme.surfaceContainerHighest : Colors.grey.shade50,
     );
   }
 }

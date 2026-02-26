@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../data/models/user_model.dart';
@@ -69,7 +69,9 @@ class _NewConversationPageState extends State<NewConversationPage> {
     setState(() {
       _filteredUsers = _allUsers.where((u) {
         return u.name.toLowerCase().contains(lower) ||
-            u.email.toLowerCase().contains(lower);
+            u.email.toLowerCase().contains(lower) ||
+            (u.departmentName ?? '').toLowerCase().contains(lower) ||
+            (u.departmentId ?? '').toLowerCase().contains(lower);
       }).toList();
     });
   }
@@ -164,16 +166,15 @@ class _NewConversationPageState extends State<NewConversationPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ny samtale'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
         actions: [
+          const AppTopBarActions(),
           TextButton(
             onPressed: _selectedUserIds.isEmpty || _isSubmitting
                 ? null
                 : _createOrSendToSelection,
             child: Text(
               _isSubmitting ? 'SENDER...' : 'NÆSTE',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
             ),
           ),
         ],
@@ -194,7 +195,9 @@ class _NewConversationPageState extends State<NewConversationPage> {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -248,9 +251,18 @@ class _NewConversationPageState extends State<NewConversationPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: AppColors.text)),
+            Text(
+              _error!,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -272,7 +284,11 @@ class _NewConversationPageState extends State<NewConversationPage> {
           _searchController.text.isEmpty
               ? 'Ingen brugere fundet'
               : 'Ingen resultater for "${_searchController.text}"',
-          style: const TextStyle(color: AppColors.subtitle),
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+          ),
         ),
       );
     }
@@ -306,13 +322,18 @@ class _UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final departmentLabel = user.departmentName?.trim().isNotEmpty == true
+        ? user.departmentName!.trim()
+        : (user.departmentId?.trim().isNotEmpty == true
+              ? 'Dept ID: ${user.departmentId!.trim()}'
+              : 'No department');
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: Text(
           user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -322,12 +343,24 @@ class _UserTile extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        user.email,
-        style: const TextStyle(color: AppColors.subtitle, fontSize: 13),
+        '${user.email}\n$departmentLabel',
+        style: TextStyle(
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+          fontSize: 13,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
+      isThreeLine: true,
       trailing: Icon(
         selected ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: selected ? AppColors.primary : AppColors.subtitle,
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
         size: 22,
       ),
       onTap: onTap,

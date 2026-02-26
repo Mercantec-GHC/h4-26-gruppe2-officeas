@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../core/utils/department_utils.dart';
 import '../../../core/utils/pick_image_bytes.dart';
 import '../../../core/widgets/auth_image.dart';
@@ -28,6 +29,7 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
       context.read<TicketsBloc>().add(LoadTicketDetail(widget.ticketId));
     });
   }
@@ -44,6 +46,7 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
       appBar: AppBar(
         title: const Text('Ticket'),
         actions: [
+          const AppTopBarActions(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => context.read<TicketsBloc>().add(

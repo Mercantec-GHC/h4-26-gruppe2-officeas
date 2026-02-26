@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/di/injection.dart';
 import '../../core/utils/pick_image_bytes.dart';
 import '../../core/widgets/auth_image.dart';
+import '../../core/widgets/app_topbar_actions.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -164,6 +165,7 @@ class _AccountPageState extends State<AccountPage> {
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
           ),
+          const AppTopBarActions(showAccount: false),
         ],
       ),
       body: LayoutBuilder(
@@ -208,6 +210,11 @@ class _AccountPageState extends State<AccountPage> {
 
   Widget _profileCard(BuildContext context, UserModel? user) {
     final authBloc = context.read<AuthBloc>();
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondaryText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final initials =
         (user?.name
                     .split(' ')
@@ -216,32 +223,36 @@ class _AccountPageState extends State<AccountPage> {
                     .join() ??
                 '')
             .toUpperCase();
+    final avatarBg = isDark
+        ? scheme.surfaceContainerHighest
+        : Colors.blue.shade50;
     final avatarWidget = _profileImageBytes != null
         ? CircleAvatar(
             radius: 44,
-            backgroundColor: Colors.blue.shade50,
+            backgroundColor: avatarBg,
             foregroundImage: MemoryImage(_profileImageBytes!),
           )
         : user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-        ? ClipOval(
-            child: SizedBox(
-              width: 88,
-              height: 88,
-              child: AuthImage(
-                imageUrl: UserRepository.imageUrl(user.avatarUrl!),
-                token: authBloc.currentToken,
-                fit: BoxFit.cover,
-              ),
-            ),
-          )
-        : CircleAvatar(
-            radius: 44,
-            backgroundColor: Colors.blue.shade50,
-            child: Text(
-              initials,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-            ),
-          );
+            ? ClipOval(
+                child: SizedBox(
+                  width: 88,
+                  height: 88,
+                  child: AuthImage(
+                    imageUrl: UserRepository.imageUrl(user.avatarUrl!),
+                    token: authBloc.currentToken,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            : CircleAvatar(
+                radius: 44,
+                backgroundColor: avatarBg,
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.w700),
+                ),
+              );
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -289,7 +300,7 @@ class _AccountPageState extends State<AccountPage> {
                           : Text(
                               user?.email ?? '',
                               style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: Colors.grey.shade600),
+                                  ?.copyWith(color: secondaryText),
                             ),
                     ],
                   ),
@@ -422,13 +433,16 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _infoRow(String label, String value) {
+    final labelColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.78);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           SizedBox(
             width: 140,
-            child: Text(label, style: const TextStyle(color: Colors.black54)),
+            child: Text(label, style: TextStyle(color: labelColor)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -437,17 +451,22 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _statTile(BuildContext context, String title, String value) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.78);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: isDark ? scheme.surfaceContainerHighest : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(color: Colors.black54)),
+            Text(title, style: TextStyle(color: labelColor)),
             const SizedBox(height: 6),
             Text(
               value,

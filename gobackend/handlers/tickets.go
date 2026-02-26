@@ -217,20 +217,29 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Build updates from existing; only overwrite with body values when present (avoid writing zero values)
 	updates := map[string]interface{}{
 		"title":               existing.Title,
 		"description":         existing.Description,
-		"status":              t.Status,
+		"status":              existing.Status,
 		"assigned_to_user_id": existing.AssignedToUserId,
 	}
 
 	if canManage || isCreator {
-		updates["title"] = t.Title
-		updates["description"] = t.Description
+		if t.Title != "" {
+			updates["title"] = t.Title
+		}
+		
+		if t.Description != "" {
+			updates["description"] = t.Description
+		}
 	}
 
 	if canManage {
 		updates["assigned_to_user_id"] = t.AssignedToUserId
+	}
+	if t.Status != "" {
+		updates["status"] = t.Status
 	}
 
 	if t.Status == models.TicketStatusResolved || t.Status == models.TicketStatusClosed {
@@ -317,6 +326,12 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if !isLedelse(currentUser) && !isITSupport(currentUser) {
 		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Delete comments first (no CASCADE on the model), then the ticket
+	if err := h.DB.Where("ticket_id = ?", id).Delete(&models.TicketComment{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 

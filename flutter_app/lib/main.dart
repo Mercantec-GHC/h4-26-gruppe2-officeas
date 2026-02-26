@@ -12,9 +12,11 @@ import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
 import 'features/auth/pages/pending_approval_page.dart';
 import 'features/home/pages/home_page.dart';
+import 'features/home/account.dart';
 import 'features/calendar/pages/calendar_page.dart';
 import 'features/notifications/pages/notifications_page.dart';
 import 'core/theme/theme.dart';
+import 'core/theme/theme_cubit.dart';
 import 'core/widgets/it_support_guard.dart';
 import 'features/tickets/bloc/tickets_bloc.dart';
 import 'features/messaging/bloc/messaging_bloc.dart';
@@ -85,6 +87,7 @@ class MyApp extends StatelessWidget {
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
         BlocProvider(create: (context) => getIt<TicketsBloc>()),
+        BlocProvider(create: (context) => ThemeCubit()..loadTheme()),
 
         // TODO: Tilføj flere BLoCs her efterhånden:
         // BlocProvider(
@@ -94,28 +97,37 @@ class MyApp extends StatelessWidget {
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           final isAuthenticated = state is Authenticated;
-          return MaterialApp(
-            key: ValueKey(isAuthenticated),
-            title: 'OfficeAs',
-            theme: appTheme,
-            debugShowCheckedModeBanner: false,
-            home: isAuthenticated
-                ? const MainNavigation(initialIndex: 0)
-                : const LoginPage(),
-            initialRoute: isAuthenticated ? '/home' : null,
-            routes: {
-              '/login': (context) => const LoginPage(),
-              '/pending-approval': (context) => const PendingApprovalPage(),
-              '/home': (context) => const MainNavigation(initialIndex: 0),
-              '/messages': (context) => const MainNavigation(initialIndex: 1),
-              '/calendar': (context) => const MainNavigation(initialIndex: 2),
-              '/notifications': (context) =>
-                  const MainNavigation(initialIndex: 3),
-              '/tickets': (context) =>
-                  const ItSupportGuard(child: TicketListPage()),
-              '/tickets/new': (context) => const CreateTicketPage(),
-              '/users/approvals': (context) => const UserApprovalsPage(),
-              '/navigation': (context) => const MainNavigation(),
+          return BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, themeMode) {
+              return MaterialApp(
+                key: ValueKey('$isAuthenticated-$themeMode'),
+                title: 'OfficeAs',
+                theme: appTheme,
+                darkTheme: appDarkTheme,
+                themeMode: themeMode,
+                debugShowCheckedModeBanner: false,
+                home: isAuthenticated
+                    ? const MainNavigation(initialIndex: 0)
+                    : const LoginPage(),
+                initialRoute: isAuthenticated ? '/home' : null,
+                routes: {
+                  '/login': (context) => const LoginPage(),
+                  '/pending-approval': (context) => const PendingApprovalPage(),
+                  '/home': (context) => const MainNavigation(initialIndex: 0),
+                  '/account': (context) => const AccountPage(),
+                  '/messages': (context) =>
+                      const MainNavigation(initialIndex: 1),
+                  '/calendar': (context) =>
+                      const MainNavigation(initialIndex: 2),
+                  '/notifications': (context) =>
+                      const MainNavigation(initialIndex: 3),
+                  '/tickets': (context) =>
+                      const ItSupportGuard(child: TicketListPage()),
+                  '/tickets/new': (context) => const CreateTicketPage(),
+                  '/users/approvals': (context) => const UserApprovalsPage(),
+                  '/navigation': (context) => const MainNavigation(),
+                },
+              );
             },
           );
         },
@@ -176,9 +188,6 @@ class _MainNavigationState extends State<MainNavigation> {
             context,
           ).pushNamedAndRemoveUntil(_tabRoutes[index], (route) => false);
         },
-        backgroundColor: Colors.white,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.black54,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(

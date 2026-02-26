@@ -5,6 +5,7 @@ import '../../../data/datasources/messaging_remote_datasource.dart';
 import '../../../data/datasources/notifications_remote_datasource.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/models/messaging_models.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../messaging/bloc/messaging_bloc.dart';
 import '../../messaging/pages/chat_page.dart';
 
@@ -207,7 +208,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifikationer')),
+      appBar: AppBar(
+        title: const Text('Notifikationer'),
+        actions: const [AppTopBarActions(showNotifications: false)],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

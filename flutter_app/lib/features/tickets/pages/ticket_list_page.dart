@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/app_drawer.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../data/models/ticket_model.dart';
 import '../bloc/tickets_bloc.dart';
 import '../bloc/tickets_event.dart';
@@ -62,7 +63,13 @@ class _TicketListBodyState extends State<_TicketListBody> {
     }
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
-      list = list.where((t) => t.title.toLowerCase().contains(q) || t.description.toLowerCase().contains(q)).toList();
+      list = list
+          .where(
+            (t) =>
+                t.title.toLowerCase().contains(q) ||
+                t.description.toLowerCase().contains(q),
+          )
+          .toList();
     }
     return list;
   }
@@ -104,20 +111,25 @@ class _TicketListBodyState extends State<_TicketListBody> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.all(12.0),
-      child: Row(children: [
-        Expanded(
-          child: TextField(
-            controller: _searchController,
-            decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: 'Søg tickets', border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
-            onChanged: (v) => setState(() => _query = v),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Søg tickets',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        IconButton(
-          icon: const Icon(Icons.filter_list),
-          onPressed: () {},
-        ),
-      ]),
+          const SizedBox(width: 12),
+          IconButton(icon: const Icon(Icons.filter_list), onPressed: () {}),
+        ],
+      ),
     );
   }
 
@@ -126,45 +138,66 @@ class _TicketListBodyState extends State<_TicketListBody> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(children: statuses.map((s) {
-        final selected = s == _statusFilter;
-        final label = s == 'ALL' ? 'Alle' : (s == 'OPEN' ? 'Åben' : s == 'IN_PROGRESS' ? 'I gang' : 'Løst');
-        return Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => setState(() => _statusFilter = s)),
-        );
-      }).toList()),
+      child: Row(
+        children: statuses.map((s) {
+          final selected = s == _statusFilter;
+          final label = s == 'ALL'
+              ? 'Alle'
+              : (s == 'OPEN'
+                    ? 'Åben'
+                    : s == 'IN_PROGRESS'
+                    ? 'I gang'
+                    : 'Løst');
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(label),
+              selected: selected,
+              onSelected: (_) => setState(() => _statusFilter = s),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     return Scaffold(
       drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('Tickets'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            tooltip: 'Notifikationer',
-            onPressed: () {},
-          ),
+          const AppTopBarActions(),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Opdater',
-            onPressed: () => context.read<TicketsBloc>().add(const RefreshTickets()),
+            onPressed: () =>
+                context.read<TicketsBloc>().add(const RefreshTickets()),
           ),
         ],
       ),
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
           if (state is TicketsError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         },
         builder: (context, state) {
           final bloc = context.read<TicketsBloc>();
-          final tickets = state is TicketsListLoaded ? state.tickets : bloc.cachedTickets;
+          final tickets = state is TicketsListLoaded
+              ? state.tickets
+              : bloc.cachedTickets;
 
           if (state is TicketsLoading && tickets.isEmpty) {
             return const Center(child: CircularProgressIndicator());
@@ -172,7 +205,18 @@ class _TicketListBodyState extends State<_TicketListBody> {
 
           if (state is TicketsError) {
             return Center(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Text(state.message, textAlign: TextAlign.center), const SizedBox(height: 16), TextButton(onPressed: () => context.read<TicketsBloc>().add(const LoadTickets()), child: const Text('Prøv igen'))]),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(state.message, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () =>
+                        context.read<TicketsBloc>().add(const LoadTickets()),
+                    child: const Text('Prøv igen'),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -180,7 +224,30 @@ class _TicketListBodyState extends State<_TicketListBody> {
 
           if (filtered.isEmpty) {
             return Center(
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.confirmation_number_outlined, size: 64, color: Colors.grey.shade400), const SizedBox(height: 16), Text('Ingen tickets endnu', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey.shade700)), const SizedBox(height: 8), Text('Opret din første ticket', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600))]),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ingen tickets endnu',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Opret din første ticket',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
             );
           }
 
@@ -202,7 +269,12 @@ class _TicketListBodyState extends State<_TicketListBody> {
                     if (isWide) {
                       _selectTicket(ticket.id);
                     } else {
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (context) => TicketDetailPage(ticketId: ticket.id)));
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) =>
+                              TicketDetailPage(ticketId: ticket.id),
+                        ),
+                      );
                     }
                   },
                 );
@@ -212,37 +284,102 @@ class _TicketListBodyState extends State<_TicketListBody> {
 
           Widget preview;
           if (isWide) {
-            final selected = filtered.firstWhere((t) => t.id == _selectedTicketId, orElse: () => filtered.first);
+            final selected = filtered.firstWhere(
+              (t) => t.id == _selectedTicketId,
+              orElse: () => filtered.first,
+            );
             preview = Container(
-              color: Colors.grey.shade50,
+              color: isDark
+                  ? scheme.surfaceContainerHighest
+                  : Colors.grey.shade50,
               width: 360,
               padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(selected.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text(_statusLabel(selected.status), style: TextStyle(color: _statusColor(selected.status), fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                if (selected.createdByName != null) Text('Oprettet af ${selected.createdByName}'),
-                const SizedBox(height: 12),
-                Expanded(child: SingleChildScrollView(child: Text(selected.description, style: Theme.of(context).textTheme.bodyMedium))),
-                const SizedBox(height: 12),
-                Row(children: [ElevatedButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TicketDetailPage(ticketId: selected.id))), child: const Text('Åbn')), const SizedBox(width: 8), OutlinedButton(onPressed: () {}, child: const Text('Tildel'))])
-              ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    selected.title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _statusLabel(selected.status),
+                    style: TextStyle(
+                      color: _statusColor(selected.status),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (selected.createdByName != null)
+                    Text(
+                      'Oprettet af ${selected.createdByName}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: mutedText),
+                    ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        selected.description,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                TicketDetailPage(ticketId: selected.id),
+                          ),
+                        ),
+                        child: const Text('Åbn'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () {},
+                        child: const Text('Tildel'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           } else {
             preview = const SizedBox.shrink();
           }
 
-          return Column(children: [
-            _buildSearchBar(),
-            _buildFilterChips(),
-            const SizedBox(height: 8),
-            Expanded(child: isWide ? Row(children: [Expanded(flex: 2, child: list), const VerticalDivider(width: 1), SizedBox(width: 360, child: preview)]) : list)
-          ]);
+          return Column(
+            children: [
+              _buildSearchBar(),
+              _buildFilterChips(),
+              const SizedBox(height: 8),
+              Expanded(
+                child: isWide
+                    ? Row(
+                        children: [
+                          Expanded(flex: 2, child: list),
+                          const VerticalDivider(width: 1),
+                          SizedBox(width: 360, child: preview),
+                        ],
+                      )
+                    : list,
+              ),
+            ],
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (context) => const CreateTicketPage())),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => const CreateTicketPage(),
+          ),
+        ),
         tooltip: 'Opret ticket',
         child: const Icon(Icons.add),
       ),
@@ -258,6 +395,9 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mutedText = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final created = DateFormat('dd/MM/yyyy').format(ticket.createdAt);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -286,7 +426,7 @@ class _TicketCard extends StatelessWidget {
                   'Oprettet af ${ticket.createdByName} · $created',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                  ).textTheme.bodySmall?.copyWith(color: mutedText),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
