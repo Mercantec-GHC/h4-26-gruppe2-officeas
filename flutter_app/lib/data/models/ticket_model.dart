@@ -12,6 +12,7 @@ class TicketModel {
   final DateTime? resolvedAt;
   final String? createdByName;
   final String? assignedToName;
+  final String? imagePath;
   final List<TicketCommentModel> comments;
 
   TicketModel({
@@ -26,6 +27,7 @@ class TicketModel {
     this.resolvedAt,
     this.createdByName,
     this.assignedToName,
+    this.imagePath,
     this.comments = const [],
   });
 
@@ -57,6 +59,7 @@ class TicketModel {
       assignedToName: json['assigned_to_user'] is Map
           ? json['assigned_to_user']['name']
           : null,
+      imagePath: json['image_path']?.toString(),
       comments: commentsList,
     );
   }
@@ -80,6 +83,7 @@ class TicketModel {
     String? description,
     String? status,
     String? assignedToUserId,
+    String? imagePath,
     List<TicketCommentModel>? comments,
   }) {
     return TicketModel(
@@ -94,6 +98,7 @@ class TicketModel {
       resolvedAt: resolvedAt,
       createdByName: createdByName,
       assignedToName: assignedToName,
+      imagePath: imagePath ?? this.imagePath,
       comments: comments ?? this.comments,
     );
   }

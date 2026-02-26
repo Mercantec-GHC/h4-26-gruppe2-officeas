@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../data/models/user_model.dart';
+
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
 
@@ -41,3 +43,13 @@ class GitHubSignInRequested extends AuthEvent {}
 class LogoutRequested extends AuthEvent {}
 
 class CheckAuthStatus extends AuthEvent {}
+
+/// Emitted when the current user profile is updated (e.g. after avatar upload).
+class UserUpdated extends AuthEvent {
+  final UserModel user;
+
+  const UserUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}

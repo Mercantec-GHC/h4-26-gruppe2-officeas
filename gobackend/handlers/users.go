@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
 	"time"
 
+	"stuff/internal/upload"
 	"stuff/models"
 
 	"github.com/google/uuid"
@@ -13,9 +16,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// Users holds DB for user handlers
+// Users holds DB and upload dir for user handlers
 type Users struct {
-	DB *gorm.DB
+	DB        *gorm.DB
+	UploadDir string
+}
+
+// setUserAvatarURL sets AvatarURL on u for API responses when the user has a profile image.
+func setUserAvatarURL(u *models.User) {
+	if u != nil && u.ProfileImagePath != "" {
+		u.AvatarURL = "/users/" + u.Id.String() + "/avatar"
+	}
 }
 
 // List godoc
@@ -31,6 +42,9 @@ func (h Users) List(w http.ResponseWriter, r *http.Request) {
 	if err := h.DB.Preload("Department").Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	for i := range list {
+		setUserAvatarURL(&list[i])
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -64,6 +78,7 @@ func (h Users) GetByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	setUserAvatarURL(&u)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(u)
@@ -96,6 +111,10 @@ func (h Users) ListPending(w http.ResponseWriter, r *http.Request) {
 		Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	
+	for i := range list {
+		setUserAvatarURL(&list[i])
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -254,7 +273,8 @@ func (h Users) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.WithContext(r.Context()).First(&u, "id = ?", id)
+	h.DB.WithContext(r.Context()).Preload("Department").First(&u, "id = ?", id)
+	setUserAvatarURL(&u)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(u)
 }
@@ -312,9 +332,148 @@ func (h Users) ApproveAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	setUserAvatarURL(&user)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+// UploadProfileImage godoc
+// @Summary      Upload profile image (current user)
+// @Tags         users
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        image  formData  file  true  "Profile image"
+// @Success      200  {object}  models.User
+// @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Router       /users/me/profile-image [put]
+func (h Users) UploadProfileImage(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+	
+		return
+	}
+	
+	file, _, ext, err := upload.ParseImage(r, upload.FormFieldImage)
+	
+	if err != nil {
+		if errors.Is(err, upload.ErrTooLarge) || errors.Is(err, upload.ErrInvalidType) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	
+		return
+	}
+	
+	defer file.Close()
+
+	relPath := "profiles/" + currentUser.Id.String() + ext
+	
+	if currentUser.ProfileImagePath != "" {
+		_ = upload.DeleteFile(h.UploadDir, currentUser.ProfileImagePath)
+	}
+	
+	if err := upload.SaveFile(h.UploadDir, relPath, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	if err := h.DB.Model(&models.User{}).Where("id = ?", currentUser.Id).Update("profile_image_path", relPath).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	var u models.User
+	
+	if err := h.DB.Preload("Department").First(&u, "id = ?", currentUser.Id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	setUserAvatarURL(&u)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(u)
+}
+
+// ServeProfileImage godoc
+// @Summary      Serve profile image
+// @Tags         users
+// @Produce      image/*
+// @Param        id   path      string  true  "User ID or 'me'"
+// @Success      200  "Image bytes"
+// @Failure      404  {string}  string  "not found"
+// @Security     BearerAuth
+// @Router       /users/{id}/avatar [get]
+func (h Users) ServeProfileImage(w http.ResponseWriter, r *http.Request) {
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+		return
+	}
+
+	idStr := mux.Vars(r)["id"]
+	
+	var userID uuid.UUID
+	
+	if idStr == "me" {
+		_, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		userID = currentUser.Id
+	} else {
+		id, err := uuid.Parse(idStr)
+
+		if err != nil {
+			http.Error(w, "invalid user id", http.StatusBadRequest)
+			return
+		}
+
+		userID = id
+	}
+
+	var u models.User
+
+	if err := h.DB.First(&u, "id = ?", userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "user not found", http.StatusNotFound)
+
+			return
+		}
+
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	if u.ProfileImagePath == "" {
+		http.Error(w, "no profile image", http.StatusNotFound)
+
+		return
+	}
+
+	if err := upload.ServeFile(w, h.UploadDir, u.ProfileImagePath); err != nil {
+		if errors.Is(err, upload.ErrPathEscape) || errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
 }
 
 // Delete godoc
@@ -349,6 +508,9 @@ func (h Users) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterUsers adds user routes
 func RegisterUsers(router *mux.Router, h Users, prefix string) {
+	router.HandleFunc(prefix+"/me/profile-image", h.UploadProfileImage).Methods("PUT")
+	router.HandleFunc(prefix+"/me/avatar", h.ServeProfileImage).Methods("GET")
+	router.HandleFunc(prefix+"/{id}/avatar", h.ServeProfileImage).Methods("GET")
 	router.HandleFunc(prefix, h.List).Methods("GET")
 	router.HandleFunc(prefix+"/pending", h.ListPending).Methods("GET")
 	router.HandleFunc(prefix, h.Create).Methods("POST")

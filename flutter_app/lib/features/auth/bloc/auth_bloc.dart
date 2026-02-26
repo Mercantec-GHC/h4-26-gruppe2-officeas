@@ -22,6 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<GitHubSignInRequested>(_onGitHubSignInRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CheckAuthStatus>(_onCheckAuthStatus);
+    on<UserUpdated>(_onUserUpdated);
 
     // Check auth status on initialization
     _checkAuthStatusOnInit();
@@ -187,6 +188,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     } catch (e) {
       emit(Unauthenticated());
+    }
+  }
+
+  void _onUserUpdated(UserUpdated event, Emitter<AuthState> emit) {
+    _currentUser = event.user;
+    if (_currentToken != null) {
+      emit(Authenticated(user: event.user, token: _currentToken!));
     }
   }
 }

@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
+
+import '../../core/api/secure_api_client.dart';
+import '../../core/config/app_config.dart';
 import '../models/ticket_comment_model.dart';
 import '../models/ticket_model.dart';
-import '../../core/config/app_config.dart';
-import '../../core/api/secure_api_client.dart';
 
 class TicketRepository {
   late final Dio _dio;
@@ -56,8 +57,9 @@ class TicketRepository {
       'created_by_user_id': createdByUserId,
     };
 
-    if (assignedToUserId != null)
+    if (assignedToUserId != null) {
       body['assigned_to_user_id'] = assignedToUserId;
+    }
 
     final response = await _dio.post('/tickets', data: body);
     return TicketModel.fromJson(response.data as Map<String, dynamic>);
@@ -109,5 +111,28 @@ class TicketRepository {
     );
 
     return TicketCommentModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// Upload problem image for a ticket (PUT /tickets/:id/image).
+  /// [bytes] and [filename] work on all platforms (no dart:io).
+  Future<TicketModel> uploadTicketImage(
+    String ticketId,
+    List<int> bytes, {
+    String filename = 'image.jpg',
+  }) async {
+    final formData = FormData.fromMap({
+      'image': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+      ),
+    });
+
+    final response = await _dio.put(
+      '/tickets/$ticketId/image',
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+
+    return TicketModel.fromJson(response.data as Map<String, dynamic>);
   }
 }

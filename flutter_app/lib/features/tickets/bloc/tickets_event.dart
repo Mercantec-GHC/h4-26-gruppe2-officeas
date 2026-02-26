@@ -67,3 +67,18 @@ class AddComment extends TicketsEvent {
 class ClearTicketDetail extends TicketsEvent {
   const ClearTicketDetail();
 }
+
+class UploadTicketImage extends TicketsEvent {
+  final String ticketId;
+  final List<int> imageBytes;
+  final String filename;
+
+  const UploadTicketImage({
+    required this.ticketId,
+    required this.imageBytes,
+    this.filename = 'image.jpg',
+  });
+
+  @override
+  List<Object?> get props => [ticketId, filename];
+}
