@@ -1,4 +1,4 @@
-.PHONY: help up down ps logs restart seed db-reset backend-build backend-run
+.PHONY: help up down ps logs restart seed db-reset backend-build backend-run test test-unit test-v e2e
 
 .DEFAULT_GOAL := help
 
@@ -14,6 +14,10 @@ help:
 	@echo "  make db-reset     - Clean DB (truncate all) and re-run migrations + seed"
 	@echo "  make backend-build - Build Go backend"
 	@echo "  make backend-run  - Run Go backend locally (requires DATABASE_URL)"
+	@echo "  make test         - Run unit tests and e2e tests"
+	@echo "  make test-unit    - Run unit tests only (handlers, seed)"
+	@echo "  make test-v       - Run unit tests with verbose output"
+	@echo "  make e2e          - Run API e2e tests (requires backend + DB + seed)"
 
 up:
 	docker compose up -d
@@ -44,3 +48,15 @@ backend-build:
 
 backend-run:
 	cd gobackend && go run .
+
+test: test-unit e2e
+
+test-unit:
+	cd gobackend && go run gotest.tools/gotestsum@latest --format testdox -- ./handlers ./seed
+
+test-v:
+	cd gobackend && go test ./handlers ./seed -v
+
+# E2E tests hit a running backend. Start backend first, e.g. make up && make seed if db isn't seedded.
+e2e:
+	cd gobackend && go run gotest.tools/gotestsum@latest --format testdox -- ./e2e
