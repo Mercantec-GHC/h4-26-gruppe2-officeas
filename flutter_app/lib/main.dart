@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_web_plugins/url_strategy.dart'
+    if (dart.library.io) 'core/config/url_strategy_stub.dart'
+    as url_strategy;
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
 import 'domain/repositories/shift_repository.dart';
-import 'features/messaging/bloc/messaging_bloc.dart';
-import 'features/messaging/pages/conversations_page.dart';
+import 'domain/repositories/absence_request_repository.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/pages/login_page.dart';
+import 'features/auth/pages/pending_approval_page.dart';
 import 'features/home/pages/home_page.dart';
+import 'features/home/account.dart';
 import 'features/calendar/pages/calendar_page.dart';
+import 'features/notifications/pages/notifications_page.dart';
 import 'core/theme/theme.dart';
+import 'core/theme/theme_cubit.dart';
+import 'core/widgets/it_support_guard.dart';
+import 'features/tickets/bloc/tickets_bloc.dart';
+import 'features/messaging/bloc/messaging_bloc.dart';
+import 'features/messaging/pages/conversations_page.dart';
+import 'features/tickets/pages/ticket_list_page.dart';
+import 'features/tickets/pages/create_ticket_page.dart';
+import 'features/users/pages/user_approvals_page.dart';
 
 /// Main entry point
 ///
@@ -23,6 +36,9 @@ import 'core/theme/theme.dart';
 void main() async {
   // Sikr at Flutter bindings er initialiseret
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Path-based URLs on web (e.g. /home instead of #/home)
+  url_strategy.usePathUrlStrategy();
 
   // 1. Initialisér App Configuration
   // TODO: Skift til Environment.production når du deployer til produktion!
@@ -70,22 +86,48 @@ class MyApp extends StatelessWidget {
         ),
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
+        BlocProvider(create: (context) => getIt<TicketsBloc>()),
+        BlocProvider(create: (context) => ThemeCubit()..loadTheme()),
+
+        // TODO: Tilføj flere BLoCs her efterhånden:
+        // BlocProvider(
+        //   create: (context) => getIt<LoginBloc>(),
+        // ),
       ],
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          return MaterialApp(
-            title: 'OfficeAs',
-            theme: appTheme,
-            debugShowCheckedModeBanner: false,
-            home: state is Authenticated
-                ? const MainNavigation()
-                : const LoginPage(),
-            routes: {
-              '/login': (context) => const LoginPage(),
-              '/home': (context) => const HomePage(),
-              '/navigation': (context) => const MainNavigation(),
-              '/calendar': (context) =>
-                  CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+          final isAuthenticated = state is Authenticated;
+          return BlocBuilder<ThemeCubit, ThemeMode>(
+            builder: (context, themeMode) {
+              return MaterialApp(
+                key: ValueKey('$isAuthenticated-$themeMode'),
+                title: 'OfficeAs',
+                theme: appTheme,
+                darkTheme: appDarkTheme,
+                themeMode: themeMode,
+                debugShowCheckedModeBanner: false,
+                home: isAuthenticated
+                    ? const MainNavigation(initialIndex: 0)
+                    : const LoginPage(),
+                initialRoute: isAuthenticated ? '/home' : null,
+                routes: {
+                  '/login': (context) => const LoginPage(),
+                  '/pending-approval': (context) => const PendingApprovalPage(),
+                  '/home': (context) => const MainNavigation(initialIndex: 0),
+                  '/account': (context) => const AccountPage(),
+                  '/messages': (context) =>
+                      const MainNavigation(initialIndex: 1),
+                  '/calendar': (context) =>
+                      const MainNavigation(initialIndex: 2),
+                  '/notifications': (context) =>
+                      const MainNavigation(initialIndex: 3),
+                  '/tickets': (context) =>
+                      const ItSupportGuard(child: TicketListPage()),
+                  '/tickets/new': (context) => const CreateTicketPage(),
+                  '/users/approvals': (context) => const UserApprovalsPage(),
+                  '/navigation': (context) => const MainNavigation(),
+                },
+              );
             },
           );
         },
@@ -94,21 +136,45 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Route paths for bottom bar tabs (so e.g. /calendar opens calendar tab).
+const _tabRoutes = ['/home', '/messages', '/calendar', '/notifications'];
+
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  const MainNavigation({super.key, this.initialIndex = 0});
+
+  final int initialIndex;
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
+  // Pages correspond to bottom navigation items: Home, Messages, Calendar, Notifications
   static final List<Widget> _pages = <Widget>[
     const HomePage(),
     const ConversationsPage(),
-    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
+    CalendarPage(
+      shiftRepository: getIt<ShiftRepository>(),
+      absenceRequestRepository: getIt<AbsenceRequestRepository>(),
+    ),
+    const NotificationsPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
+  @override
+  void didUpdateWidget(MainNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialIndex != widget.initialIndex) {
+      _selectedIndex = widget.initialIndex;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,22 +183,24 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          if (index == _selectedIndex) return;
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil(_tabRoutes[index], (route) => false);
         },
-        backgroundColor: Colors.white,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.black54,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
-            label: 'Beskeder',
+            label: 'Messages',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
-            label: 'Kalender',
+            label: 'Calendar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_none),
+            label: 'Notifikationer',
           ),
         ],
       ),

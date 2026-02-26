@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
@@ -26,11 +26,11 @@ class _ConversationsPageState extends State<ConversationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Beskeder'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
+        actions: const [AppTopBarActions()],
       ),
       body: BlocBuilder<MessagingBloc, MessagingState>(
         buildWhen: (prev, curr) =>
@@ -73,8 +73,8 @@ class _ConversationsPageState extends State<ConversationsPage> {
             context.read<MessagingBloc>().add(LoadConversations());
           }
         },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.edit, color: Colors.white),
+        backgroundColor: scheme.primary,
+        child: Icon(Icons.edit, color: scheme.onPrimary),
       ),
     );
   }
@@ -124,7 +124,11 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = conversation.displayName(currentUserId);
+    final scheme = Theme.of(context).colorScheme;
+    final subtitleColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
+    final name = conversation.displayNameWithDepartment(currentUserId);
     final preview = conversation.lastMessagePreview.isEmpty
         ? 'Ingen beskeder endnu'
         : conversation.lastMessagePreview;
@@ -133,11 +137,11 @@ class _ConversationTile extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: scheme.primary,
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: scheme.onPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -153,7 +157,7 @@ class _ConversationTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: AppColors.subtitle,
+          color: subtitleColor,
           fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
@@ -165,7 +169,7 @@ class _ConversationTile extends StatelessWidget {
             time,
             style: TextStyle(
               fontSize: 12,
-              color: unread > 0 ? AppColors.primary : AppColors.subtitle,
+              color: unread > 0 ? scheme.primary : subtitleColor,
             ),
           ),
           if (unread > 0) ...[
@@ -173,13 +177,13 @@ class _ConversationTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: scheme.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 unread > 99 ? '99+' : unread.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onPrimary,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -228,15 +232,18 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final subtitleColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: AppColors.subtitle),
-          SizedBox(height: 16),
+          Icon(Icons.chat_bubble_outline, size: 64, color: subtitleColor),
+          const SizedBox(height: 16),
           Text(
             'Ingen samtaler endnu',
-            style: TextStyle(fontSize: 16, color: AppColors.subtitle),
+            style: TextStyle(fontSize: 16, color: subtitleColor),
           ),
         ],
       ),
@@ -252,18 +259,20 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.bodyMedium?.color;
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            Icon(Icons.error_outline, size: 48, color: scheme.error),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.text),
+              style: TextStyle(color: textColor),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Prøv igen')),

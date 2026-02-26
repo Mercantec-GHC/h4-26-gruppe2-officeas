@@ -23,7 +23,7 @@ func Run(db *gorm.DB) error {
 		{"users", SeedUsers},
 		{"tickets", SeedTickets},
 		{"feedback", SeedFeedback},
-		{"shifts", SeedShifts},
+		// {"shifts", SeedShifts},		Use automatic shift generation instead
 		{"ticket_comments", SeedTicketComments},
 		{"absence_requests", SeedAbsenceRequests},
 		{"absence_request_comments", SeedAbsenceRequestComments},

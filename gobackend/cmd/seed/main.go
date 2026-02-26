@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -32,6 +33,9 @@ func runMigrations(db *gorm.DB) error {
 }
 
 func main() {
+	clean := flag.Bool("clean", false, "truncate tables (departments, users + CASCADE) before migrations and seed")
+	flag.Parse()
+
 	_ = godotenv.Load()
 
 	dsn := os.Getenv("DATABASE_URL")
@@ -46,6 +50,15 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect to database: %v\n", err)
 		os.Exit(1)
+	}
+
+	if *clean {
+		// Truncate root tables; CASCADE clears all tables that reference them.
+		if err := db.Exec("TRUNCATE departments, users RESTART IDENTITY CASCADE").Error; err != nil {
+			fmt.Fprintf(os.Stderr, "failed to clean database: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Database cleaned.")
 	}
 
 	if err := runMigrations(db); err != nil {
