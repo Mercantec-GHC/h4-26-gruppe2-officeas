@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/di/injection.dart';
@@ -132,46 +133,128 @@ class _AccountPageState extends State<AccountPage> {
   void _changePassword() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         final oldCtrl = TextEditingController();
         final newCtrl = TextEditingController();
-        return AlertDialog(
-          title: const Text('Change password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: oldCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Current password',
+        bool currentVisible = false;
+        bool newVisible = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Change password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: oldCtrl,
+                    obscureText: !currentVisible,
+                    decoration: InputDecoration(
+                      labelText: 'Current password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          currentVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () => setDialogState(
+                            () => currentVisible = !currentVisible),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: newCtrl,
+                    obscureText: !newVisible,
+                    decoration: InputDecoration(
+                      labelText: 'New password',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          newVisible
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () =>
+                            setDialogState(() => newVisible = !newVisible),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
                 ),
-              ),
-              TextField(
-                controller: newCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New password'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Password changed (demo)')),
-                );
-              },
-              child: const Text('Change'),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: () async {
+                    final current = oldCtrl.text;
+                    final newPw = newCtrl.text;
+                    if (current.isEmpty || newPw.isEmpty) {
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please enter both current and new password',
+                          ),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+                    final messenger = ScaffoldMessenger.of(dialogContext);
+                    final navigator = Navigator.of(dialogContext);
+                    try {
+                      await getIt<UserRepository>().changePassword(
+                        currentPassword: current,
+                        newPassword: newPw,
+                      );
+                      if (!dialogContext.mounted) return;
+                      navigator.pop();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Password changed successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!dialogContext.mounted) return;
+                      final message = _passwordChangeErrorMessage(e);
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(message),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Change'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
+  }
+
+  /// Returns a user-friendly message for password change errors (e.g. from API body).
+  String _passwordChangeErrorMessage(Object error) {
+    String message;
+    if (error is DioException && error.response?.data != null) {
+      final data = error.response!.data;
+
+      if (data is String && data.trim().isNotEmpty) {
+        message = data.trim();
+      } else if (data is Map && data['message'] != null) {
+        message = data['message'].toString();
+      } else {
+        message = 'Could not change password. Please try again.';
+      }
+    } else {
+      message = 'Could not change password. Please try again.';
+    }
+    return message.isEmpty
+        ? message
+        : '${message[0].toUpperCase()}${message.substring(1)}';
   }
 
   @override
@@ -311,8 +394,9 @@ class _AccountPageState extends State<AccountPage> {
                   )
                 : Text(
                     user?.name ?? 'Guest',
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
             const SizedBox(height: 12),
             _isEditing
@@ -325,8 +409,9 @@ class _AccountPageState extends State<AccountPage> {
                   )
                 : Text(
                     user?.email ?? '',
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: secondaryText),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: secondaryText),
                   ),
             const SizedBox(height: 18),
             _departmentBox(context, user?.departmentName ?? '—'),
@@ -339,7 +424,8 @@ class _AccountPageState extends State<AccountPage> {
                   icon: const Icon(Icons.camera_alt),
                   label: const Text('Take picture'),
                 ),
-                if ((user?.avatarUrl ?? '').isNotEmpty || _profileImageBytes != null) ...[
+                if ((user?.avatarUrl ?? '').isNotEmpty ||
+                    _profileImageBytes != null) ...[
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: _removeProfileImage,

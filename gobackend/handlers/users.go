@@ -594,6 +594,71 @@ func (h Users) DeleteProfileImage(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(u)
 }
 
+// ChangePasswordRequest is the JSON body for PUT /users/me/password.
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+// ChangePassword godoc
+// @Summary      Change current user's password
+// @Tags         users
+// @Accept       json
+// @Param        body  body  ChangePasswordRequest  true  "Current and new password"
+// @Success      204   "No Content"
+// @Failure      400   {string}  string  "Bad request (validation, account has no password, or current password incorrect)"
+// @Security     BearerAuth
+// @Router       /users/me/password [put]
+func (h Users) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	var req ChangePasswordRequest
+	
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	
+	req.CurrentPassword = SanitizeInput(req.CurrentPassword)
+	req.NewPassword = SanitizeInput(req.NewPassword)
+	
+	if currentUser.PasswordHash == "" {
+		http.Error(w, "account uses external sign-in; password cannot be changed", http.StatusBadRequest)
+		return
+	}
+	
+	if err := bcrypt.CompareHashAndPassword([]byte(currentUser.PasswordHash), []byte(req.CurrentPassword)); err != nil {
+		http.Error(w, "current password is incorrect", http.StatusBadRequest)
+		return
+	}
+	
+	ok, msg := ValidatePassword(req.NewPassword)
+	
+	if !ok {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+	
+	hashed, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	
+	if err != nil {
+		http.Error(w, "failed to hash password", http.StatusInternalServerError)
+		return
+	}
+	
+	if err := h.DB.Model(&models.User{}).Where("id = ?", currentUser.Id).Update("password_hash", string(hashed)).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // Delete godoc
 // @Summary      Delete user by ID
 // @Tags         users
@@ -628,6 +693,7 @@ func (h Users) Delete(w http.ResponseWriter, r *http.Request) {
 func RegisterUsers(router *mux.Router, h Users, prefix string) {
 	router.HandleFunc(prefix+"/me/profile-image", h.UploadProfileImage).Methods("PUT")
 	router.HandleFunc(prefix+"/me/profile-image", h.DeleteProfileImage).Methods("DELETE")
+	router.HandleFunc(prefix+"/me/password", h.ChangePassword).Methods("PUT")
 	router.HandleFunc(prefix+"/me/avatar", h.ServeProfileImage).Methods("GET")
 	router.HandleFunc(prefix+"/{id}/avatar", h.ServeProfileImage).Methods("GET")
 	router.HandleFunc(prefix, h.List).Methods("GET")

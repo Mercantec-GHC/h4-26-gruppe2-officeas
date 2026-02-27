@@ -46,6 +46,24 @@ class UserRepository {
     return UserModel.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Change the current user's password. Throws on failure (e.g. wrong current password, or validation error).
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.put(
+      '/users/me/password',
+      data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+      },
+      options: Options(
+        contentType: 'application/json',
+        responseType: ResponseType.plain,
+      ),
+    );
+  }
+
   /// Delete the current user's profile image. Returns the updated user (no avatar).
   Future<UserModel> deleteProfileImage() async {
     final response = await _dio.delete(
