@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../utils/department_utils.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 
@@ -27,7 +28,7 @@ class _ItSupportGuardState extends State<ItSupportGuard> {
     final user = context.read<AuthBloc>().currentUser;
 
     if (!isItSupportDepartment(user)) {
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      context.go('/');
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_response_model.dart';
 import '../models/auth_result_model.dart';
 import '../models/pending_auth_response_model.dart';
+import '../models/user_model.dart';
 import '../../core/config/app_config.dart';
 
 class AuthRepository {
@@ -143,6 +144,19 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     final u = prefs.getString(_userKey);
     return u != null && u.isNotEmpty;
+  }
+
+  /// Returns the stored user from local storage, or null if missing/invalid.
+  Future<UserModel?> getStoredUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      return UserModel.fromJson(map);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> isLoggedIn() async {

@@ -33,15 +33,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final isLoggedIn = await _authService.isLoggedIn();
       if (isLoggedIn) {
         final token = await _authService.getToken();
-        final hasUser = await _authService.hasStoredUser();
-        // Only attempt to restore auth if we have both token and stored user data
-        if (token != null && hasUser) {
+        final storedUser = await _authService.getStoredUser();
+        if (token != null && storedUser != null) {
           _currentToken = token;
+          _currentUser = storedUser;
           add(CheckAuthStatus());
         }
       }
     } catch (e) {
-      // Silent fail on init
       debugPrint('Auth status check failed on init: $e');
     }
   }
@@ -174,9 +173,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (isLoggedIn) {
         final token = await _authService.getToken();
         if (token != null) {
-          // Only restore to Authenticated if we also have a current user loaded
-          if (_currentUser != null) {
-            emit(Authenticated(user: _currentUser!, token: token));
+          // Use in-memory user if set (from init), otherwise try loading from storage
+          UserModel? user = _currentUser;
+          if (user == null) {
+            user = await _authService.getStoredUser();
+            if (user != null) _currentUser = user;
+          }
+          if (user != null) {
+            emit(Authenticated(user: user, token: token));
           } else {
             emit(Unauthenticated());
           }

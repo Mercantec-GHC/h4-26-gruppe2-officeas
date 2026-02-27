@@ -3,6 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import '../../data/models/auth_response_model.dart';
 import '../../data/models/auth_result_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
 class AuthService {
@@ -144,6 +145,11 @@ class AuthService {
   // Check if user data is stored locally
   Future<bool> hasStoredUser() async {
     return await _authRepository.hasStoredUser();
+  }
+
+  /// Returns the stored user from local storage (for restoring session on refresh).
+  Future<UserModel?> getStoredUser() async {
+    return await _authRepository.getStoredUser();
   }
 
   // Logout

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PendingApprovalPage extends StatelessWidget {
   final String message;
@@ -66,12 +67,7 @@ class PendingApprovalPage extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                              '/login',
-                              (route) => false,
-                            );
-                          },
+                          onPressed: () => context.go('/login'),
                           child: const Text('Back to sign in'),
                         ),
                       ),

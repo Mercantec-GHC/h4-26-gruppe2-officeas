@@ -74,6 +74,9 @@ dependencies:
   # WebSocket
   web_socket_channel: ^3.0.1
 
+  # Routing (path-based URLs, redirects, 404 → /login)
+  go_router: ^14.6.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../data/datasources/notifications_remote_datasource.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_event.dart';
@@ -39,7 +40,7 @@ class _AppTopBarActionsState extends State<AppTopBarActions> {
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.pushNamed(context, '/notifications');
+    context.go('/notifications');
     if (!mounted) return;
     _refreshUnreadCount();
   }
@@ -83,7 +84,7 @@ class _AppTopBarActionsState extends State<AppTopBarActions> {
           IconButton(
             icon: const Icon(Icons.account_circle_outlined),
             tooltip: 'Account',
-            onPressed: () => Navigator.pushNamed(context, '/account'),
+            onPressed: () => context.go('/account'),
           ),
         if (widget.showLogout)
           IconButton(

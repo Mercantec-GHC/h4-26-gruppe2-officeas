@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
 import '../../../data/datasources/notifications_remote_datasource.dart';
@@ -171,7 +172,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
 
     if (relatedType == 'shift') {
-      await Navigator.pushNamed(context, '/calendar');
+      context.go('/calendar');
       return;
     }
 

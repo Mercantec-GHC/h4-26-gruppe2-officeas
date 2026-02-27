@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
@@ -142,7 +143,7 @@ class _HomePageState extends State<HomePage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pushNamed('/calendar'),
+                onPressed: () => context.go('/calendar'),
                 icon: const Icon(Icons.calendar_today),
                 label: const Text('Open calendar'),
               ),
@@ -159,7 +160,7 @@ class _HomePageState extends State<HomePage> {
         Icons.calendar_today,
         'Shifts',
         'View your schedule',
-        () => Navigator.of(context).pushNamed('/calendar'),
+        () => context.go('/calendar'),
       ),
       () => _actionCard(
         context,
@@ -291,9 +292,7 @@ class _HomePageState extends State<HomePage> {
                                         Icons.calendar_today,
                                         'Shifts',
                                         'View your schedule',
-                                        () => Navigator.of(
-                                          context,
-                                        ).pushNamed('/calendar'),
+                                        () => context.go('/calendar'),
                                         expand: true,
                                       ),
                                       () => _actionCard(

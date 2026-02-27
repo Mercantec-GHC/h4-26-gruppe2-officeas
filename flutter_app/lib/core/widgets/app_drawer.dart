@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../utils/department_utils.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_event.dart';
@@ -33,9 +34,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Home'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/home', (route) => false);
+              context.go('/');
             },
           ),
           ListTile(
@@ -43,9 +42,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Messages'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/messages', (route) => false);
+              context.go('/messages');
             },
           ),
           ListTile(
@@ -53,9 +50,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Calendar'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/calendar', (route) => false);
+              context.go('/calendar');
             },
           ),
           ListTile(
@@ -63,9 +58,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Notifications'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil('/notifications', (route) => false);
+              context.go('/notifications');
             },
           ),
           if (showTickets)
@@ -74,7 +67,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Tickets'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/tickets');
+                context.go('/tickets');
               },
             ),
           ListTile(
@@ -82,7 +75,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Create ticket'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.of(context).pushNamed('/tickets/new');
+              context.go('/tickets/new');
             },
           ),
           if (showApprovals)
@@ -91,7 +84,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Approve accounts'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/users/approvals');
+                context.go('/users/approvals');
               },
             ),
           if (showApprovals)
@@ -100,7 +93,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('User ratings'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.of(context).pushNamed('/users/ratings');
+                context.go('/users/ratings');
               },
             ),
           const Divider(),
