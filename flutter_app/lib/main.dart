@@ -24,6 +24,8 @@ import 'features/messaging/pages/conversations_page.dart';
 import 'features/tickets/pages/ticket_list_page.dart';
 import 'features/tickets/pages/create_ticket_page.dart';
 import 'features/users/pages/user_approvals_page.dart';
+import 'features/users/pages/user_ratings_overview_page.dart';
+import 'core/utils/department_utils.dart';
 
 /// Main entry point
 ///
@@ -125,6 +127,8 @@ class MyApp extends StatelessWidget {
                       const ItSupportGuard(child: TicketListPage()),
                   '/tickets/new': (context) => const CreateTicketPage(),
                   '/users/approvals': (context) => const UserApprovalsPage(),
+                  '/users/ratings': (context) =>
+                      const _LedelseHrGuard(child: UserRatingsOverviewPage()),
                   '/navigation': (context) => const MainNavigation(),
                 },
               );
@@ -133,6 +137,29 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+/// Wrapper that only allows Ledelse and HR to see the child; others are redirected to home.
+class _LedelseHrGuard extends StatelessWidget {
+  const _LedelseHrGuard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.read<AuthBloc>().currentUser;
+    if (!canApproveAccounts(user)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/home', (route) => false);
+        }
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return child;
   }
 }
 

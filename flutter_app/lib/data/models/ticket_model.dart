@@ -35,8 +35,10 @@ class TicketModel {
     final commentsJson = json['comments'];
     final commentsList = commentsJson is List
         ? commentsJson
-            .map((e) => TicketCommentModel.fromJson(e as Map<String, dynamic>))
-            .toList()
+              .map(
+                (e) => TicketCommentModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList()
         : <TicketCommentModel>[];
 
     return TicketModel(
@@ -47,9 +49,11 @@ class TicketModel {
       createdByUserId: json['created_by_user_id']?.toString() ?? '',
       assignedToUserId: json['assigned_to_user_id']?.toString(),
       createdAt: DateTime.parse(
-          json['created_at']?.toString() ?? DateTime.now().toIso8601String()),
+        json['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+      ),
       updatedAt: DateTime.parse(
-          json['updated_at']?.toString() ?? DateTime.now().toIso8601String()),
+        json['updated_at']?.toString() ?? DateTime.now().toIso8601String(),
+      ),
       resolvedAt: json['resolved_at'] != null
           ? DateTime.tryParse(json['resolved_at'].toString())
           : null,

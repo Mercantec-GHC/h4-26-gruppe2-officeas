@@ -233,26 +233,25 @@ class _AccountPageState extends State<AccountPage> {
             foregroundImage: MemoryImage(_profileImageBytes!),
           )
         : user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-            ? ClipOval(
-                child: SizedBox(
-                  width: 88,
-                  height: 88,
-                  child: AuthImage(
-                    imageUrl: UserRepository.imageUrl(user.avatarUrl!),
-                    token: authBloc.currentToken,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              )
-            : CircleAvatar(
-                radius: 44,
-                backgroundColor: avatarBg,
-                child: Text(
-                  initials,
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w700),
-                ),
-              );
+        ? ClipOval(
+            child: SizedBox(
+              width: 88,
+              height: 88,
+              child: AuthImage(
+                imageUrl: UserRepository.imageUrl(user.avatarUrl!),
+                token: authBloc.currentToken,
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+        : CircleAvatar(
+            radius: 44,
+            backgroundColor: avatarBg,
+            child: Text(
+              initials,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+          );
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -264,6 +263,19 @@ class _AccountPageState extends State<AccountPage> {
             Row(
               children: [
                 avatarWidget,
+                CircleAvatar(
+                  radius: 44,
+                  backgroundColor: isDark
+                      ? scheme.surfaceContainerHighest
+                      : Colors.blue.shade50,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(

@@ -84,6 +84,94 @@ func (h Users) GetByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(u)
 }
 
+// UserFeedbackRatingResponse is the JSON response for GET /users/{id}/feedback-rating
+type UserFeedbackRatingResponse struct {
+	AverageRating float64 `json:"average_rating"`
+	FeedbackCount int     `json:"feedback_count"`
+}
+
+// ComputeUserFeedbackRatingGORM returns the average feedback rating and count for a user in a department.
+// Uses GORM only (Find, Preload, loop); no raw SQL. Shared by GetFeedbackRating and feedback.Create.
+func ComputeUserFeedbackRatingGORM(db *gorm.DB, userID, departmentID uuid.UUID) (avg float64, count int) {
+	var userShifts []models.Shift
+	
+	if err := db.Where("user_id = ?", userID).Find(&userShifts).Error; err != nil {
+		return 0, 0
+	}
+
+	var feedbacks []models.Feedback
+	
+	if err := db.Where("department_id = ? AND shift_id IS NOT NULL", departmentID).
+		Preload("Shift").
+		Find(&feedbacks).Error; err != nil {
+		return 0, 0
+	}
+	
+	var sum int
+	
+	for i := range feedbacks {
+		f := &feedbacks[i]
+	
+		if f.Shift == nil {
+			continue
+		}
+	
+		for _, us := range userShifts {
+			if shiftsOverlap(f.Shift.StartTime, f.Shift.EndTime, us.StartTime, us.EndTime) {
+				sum += f.Rating
+				count++
+				break
+			}
+		}
+	}
+	
+	if count > 0 {
+		avg = float64(sum) / float64(count)
+	}
+	
+	return avg, count
+}
+
+// GetFeedbackRating godoc
+// @Summary      Get a user's average feedback rating
+// @Description  Computes the average rating from all feedback that applies to shifts this user was on (same department). No raw SQL; uses GORM only.
+// @Tags         users
+// @Produce      json
+// @Param        id   path      string  true  "User ID"
+// @Success      200  {object}  handlers.UserFeedbackRatingResponse
+// @Failure      404  {string}  string  "user not found"
+// @Security     BearerAuth
+// @Router       /users/{id}/feedback-rating [get]
+func (h Users) GetFeedbackRating(w http.ResponseWriter, r *http.Request) {
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+
+	var user models.User
+	if err := h.DB.First(&user, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	avg, count := ComputeUserFeedbackRatingGORM(h.DB, user.Id, user.DepartmentId)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(UserFeedbackRatingResponse{
+		AverageRating: avg,
+		FeedbackCount: count,
+	})
+}
+
+// shiftsOverlap returns true if the two time ranges overlap.
+func shiftsOverlap(startA, endA, startB, endB time.Time) bool {
+	return startA.Before(endB) && startB.Before(endA)
+}
+
 // ListPending godoc
 // @Summary      Get pending user approvals
 // @Tags         users
@@ -514,6 +602,7 @@ func RegisterUsers(router *mux.Router, h Users, prefix string) {
 	router.HandleFunc(prefix, h.List).Methods("GET")
 	router.HandleFunc(prefix+"/pending", h.ListPending).Methods("GET")
 	router.HandleFunc(prefix, h.Create).Methods("POST")
+	router.HandleFunc(prefix+"/{id}/feedback-rating", h.GetFeedbackRating).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
 	router.HandleFunc(prefix+"/{id}/approve", h.ApproveAccount).Methods("PUT")

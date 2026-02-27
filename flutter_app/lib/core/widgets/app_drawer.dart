@@ -64,6 +64,15 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pushNamed('/users/approvals');
               },
             ),
+          if (showApprovals)
+            ListTile(
+              leading: const Icon(Icons.star_outline),
+              title: const Text('User ratings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).pushNamed('/users/ratings');
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.calendar_month),
             title: const Text('Skema'),

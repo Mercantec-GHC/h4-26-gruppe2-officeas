@@ -148,15 +148,18 @@ type TicketComment struct {
 	User   User   `gorm:"foreignKey:UserId" json:"user,omitempty"`
 }
 
-// Feedback represents feedback from users
+// Feedback represents feedback about a department for a specific shift (the time period of the experience).
+// User's overall rating is the average of all feedback ratings for shifts they were on.
 type Feedback struct {
-	Id           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	DepartmentId uuid.UUID `gorm:"type:uuid;not null" json:"department_id"`
-	Rating       int       `gorm:"not null" json:"rating"`
-	CreatedAt    time.Time `json:"created_at"`
+	Id           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	DepartmentId uuid.UUID  `gorm:"type:uuid;not null" json:"department_id"`
+	ShiftId      *uuid.UUID `gorm:"type:uuid" json:"shift_id,omitempty"`
+	Rating       int        `gorm:"not null" json:"rating"`
+	Message      *string    `gorm:"type:text" json:"message,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 
-	// Relations
 	Department Department `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
+	Shift      *Shift     `gorm:"foreignKey:ShiftId" json:"shift,omitempty"`
 }
 
 // Shift represents a user's work shift

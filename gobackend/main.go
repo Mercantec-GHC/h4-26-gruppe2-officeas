@@ -140,15 +140,12 @@ func main() {
 		http.ServeFile(w, r, "./docs/swagger.json")
 	}).Methods("GET")
 
-	// Feedback CRUD
-	handlers.RegisterFeedback(router, handlers.Feedback{DB: db}, "/feedback")
-
-	// Auth routes with rate limiting
+	// Auth routes with rate limiting (nginx strips /api so backend receives /auth/...)
 	authRouter := router.PathPrefix("/auth").Subrouter()
 	authRouter.Use(rateLimiter.RateLimitMiddleware)
 	handlers.RegisterAuth(authRouter, handlers.Auth{DB: db}, "")
 
-	// Protected routes (require authentication)
+	// Protected routes (no /api prefix; nginx strips /api so backend receives /departments, /users, etc.)
 	protectedRouter := router.PathPrefix("").Subrouter()
 	protectedRouter.Use(handlers.AuthMiddleware)
 	handlers.SetAuthorizationService(db)
@@ -161,6 +158,10 @@ func main() {
 	}
 
 	// Departments (protected)
+	// Feedback CRUD -> POST /feedback (auth via middleware on same router)
+	handlers.RegisterFeedback(protectedRouter, handlers.Feedback{DB: db}, "/feedback")
+
+	// Departments (protected) -> GET/POST /departments
 	handlers.RegisterDepartments(protectedRouter, handlers.Departments{DB: db}, "/departments")
 
 	// Users CRUD (protected) + profile image upload/serve
