@@ -23,7 +23,6 @@ class _AccountPageState extends State<AccountPage> {
   Uint8List? _profileImageBytes;
   late TextEditingController _nameController;
   late TextEditingController _emailController;
-  late TextEditingController _departmentController;
 
   @override
   void initState() {
@@ -32,16 +31,12 @@ class _AccountPageState extends State<AccountPage> {
     final user = authBloc.currentUser;
     _nameController = TextEditingController(text: user?.name ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    _departmentController = TextEditingController(
-      text: user?.departmentName ?? '',
-    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _departmentController.dispose();
     super.dispose();
   }
 
@@ -55,7 +50,7 @@ class _AccountPageState extends State<AccountPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fejl: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -261,62 +256,9 @@ class _AccountPageState extends State<AccountPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 avatarWidget,
-                CircleAvatar(
-                  radius: 44,
-                  backgroundColor: isDark
-                      ? scheme.surfaceContainerHighest
-                      : Colors.blue.shade50,
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _isEditing
-                          ? TextField(
-                              controller: _nameController,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Name',
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            )
-                          : Text(
-                              user?.name ?? 'Guest',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                      const SizedBox(height: 6),
-                      _isEditing
-                          ? TextField(
-                              controller: _emailController,
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'Email',
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            )
-                          : Text(
-                              user?.email ?? '',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: secondaryText),
-                            ),
-                    ],
-                  ),
-                ),
                 _isEditing
                     ? Row(
                         children: [
@@ -339,25 +281,41 @@ class _AccountPageState extends State<AccountPage> {
                       ),
               ],
             ),
-
             const SizedBox(height: 18),
-            Row(
-              children: [
-                _statTile(context, 'Department', user?.departmentName ?? '—'),
-                const SizedBox(width: 12),
-                _statTile(context, 'Rating', '${user?.feedbackRating ?? 0}'),
-              ],
-            ),
+            _isEditing
+                ? TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Name',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                : Text(
+                    user?.name ?? 'Guest',
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
             const SizedBox(height: 12),
-            // Image actions (camera)
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _openCamera,
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Tag billede'),
-                ),
-              ],
+            _isEditing
+                ? TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                : Text(
+                    user?.email ?? '',
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: secondaryText),
+                  ),
+            const SizedBox(height: 18),
+            _departmentBox(context, user?.departmentName ?? '—'),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _openCamera,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Take picture'),
             ),
           ],
         ),
@@ -388,10 +346,6 @@ class _AccountPageState extends State<AccountPage> {
             _isEditing
                 ? _editableRow('Email', _emailController)
                 : _infoRow('Email', user?.email ?? ''),
-            const Divider(),
-            _isEditing
-                ? _editableRow('Department', _departmentController)
-                : _infoRow('Department ID', user?.departmentId ?? ''),
             const Divider(),
             _infoRow(
               'Created',
@@ -462,13 +416,14 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
-  Widget _statTile(BuildContext context, String title, String value) {
+  Widget _departmentBox(BuildContext context, String value) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelColor = Theme.of(
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.78);
-    return Expanded(
+    return SizedBox(
+      width: double.infinity,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
         decoration: BoxDecoration(
@@ -477,8 +432,9 @@ class _AccountPageState extends State<AccountPage> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: TextStyle(color: labelColor)),
+            Text('Department', style: TextStyle(color: labelColor)),
             const SizedBox(height: 6),
             Text(
               value,
