@@ -277,17 +277,6 @@ func CanSendMessage(user *models.User, conversationID uuid.UUID) bool {
 	return svc.CanSendMessage(context.Background(), user, conversationID)
 }
 
-// CanReadNotification checks if user can read a notification.
-func CanReadNotification(user *models.User, notification *models.Notification) bool {
-	if user == nil || notification == nil {
-		return false
-	}
-	if isLedelse(user) {
-		return true
-	}
-	return notification.UserId == user.Id
-}
-
 // RequirePermission enforces a generic permission.
 func RequirePermission(permission Permission) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {

@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"stuff/models"
 
@@ -23,10 +26,20 @@ func setupFeedbackTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open test db: %v", err)
 	}
-	if err := db.AutoMigrate(&models.Department{}, &models.Feedback{}); err != nil {
+	if err := db.AutoMigrate(&models.Department{}, &models.User{}, &models.Shift{}, &models.Feedback{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return db
+}
+
+// testUserContextMiddleware sets UserIDKey in context so Create (which uses GetUserIDFromContext) sees a user without requiring a real JWT.
+func testUserContextMiddleware(userID string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func setupFeedbackRouter(t *testing.T, db *gorm.DB) *mux.Router {
@@ -104,22 +117,52 @@ func TestFeedback_GetByID(t *testing.T) {
 
 func TestFeedback_Create(t *testing.T) {
 	db := setupFeedbackTestDB(t)
-	router := setupFeedbackRouter(t, db)
 
 	dept := models.Department{Id: uuid.New(), Name: "IT"}
 	if err := db.Create(&dept).Error; err != nil {
 		t.Fatalf("create department: %v", err)
 	}
 
+	user := models.User{
+		Id:           uuid.New(),
+		Name:         "Test User",
+		Email:        "test@example.com",
+		PasswordHash: "x",
+		DepartmentId: dept.Id,
+		IsApproved:   true,
+	}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	// Shift is required by the handler; create one for the test user so overlap query finds someone
+	start := time.Date(2025, 2, 25, 8, 0, 0, 0, time.UTC)
+	end := time.Date(2025, 2, 25, 12, 0, 0, 0, time.UTC)
+	shift := models.Shift{
+		Id:        uuid.New(),
+		UserId:    user.Id,
+		StartTime: start,
+		EndTime:   end,
+	}
+	if err := db.Create(&shift).Error; err != nil {
+		t.Fatalf("create shift: %v", err)
+	}
+
+	// Router with POST /feedback wrapped in test middleware (simulates auth context) instead of AuthMiddleware
+	router := mux.NewRouter()
+	h := Feedback{DB: db}
+	router.Handle("/feedback", testUserContextMiddleware(user.Id.String())(http.HandlerFunc(h.Create))).Methods("POST")
+
 	t.Run("creates feedback and returns 201", func(t *testing.T) {
-		body := []byte(`{"department_id":"` + dept.Id.String() + `","rating":4}`)
+		body := []byte(`{"rating":4,"shift_id":"` + shift.Id.String() + `"}`)
 		req := httptest.NewRequest(http.MethodPost, "/feedback", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 		router.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusCreated {
-			t.Errorf("status = %d, want %d", rec.Code, http.StatusCreated)
+			body, _ := io.ReadAll(rec.Body)
+			t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusCreated, string(body))
 		}
 
 		var got models.Feedback
