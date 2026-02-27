@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/di/injection.dart';
 import '../../core/utils/pick_image_bytes.dart';
+import '../../core/widgets/app_scaffold.dart';
 import '../../core/widgets/auth_image.dart';
-import '../../core/widgets/app_topbar_actions.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -150,19 +150,9 @@ class _AccountPageState extends State<AccountPage> {
     final authBloc = context.read<AuthBloc>();
     final UserModel? user = authBloc.currentUser;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Account'),
-        backgroundColor: const Color(0xFF0A66FF),
-        actions: [
-          IconButton(
-            onPressed: () => authBloc.add(LogoutRequested()),
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-          ),
-          const AppTopBarActions(showAccount: false),
-        ],
-      ),
+    return AppScaffold(
+      title: const Text('Account'),
+      showAccount: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth >= 900;

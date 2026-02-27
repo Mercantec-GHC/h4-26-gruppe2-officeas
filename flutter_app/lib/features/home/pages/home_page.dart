@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../../core/widgets/app_drawer.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../feedback_page.dart';
 import '../dummy_tickets.dart';
@@ -43,12 +42,8 @@ class _HomePageState extends State<HomePage> {
     final authBloc = context.read<AuthBloc>();
     final user = authBloc.currentUser;
 
-    return Scaffold(
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        title: const Text('OfficeAs'),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: const Text('OfficeAs'),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(

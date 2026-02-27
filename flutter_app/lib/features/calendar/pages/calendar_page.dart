@@ -8,8 +8,7 @@ import '../../../domain/repositories/shift_repository.dart';
 import '../../../domain/repositories/absence_request_repository.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../core/utils/department_utils.dart';
-import '../../../core/widgets/app_drawer.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../dialogs/create_absence_request_dialog.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -257,25 +256,20 @@ class _CalendarPageState extends State<CalendarPage> {
     final mutedText = Theme.of(
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
-    return Scaffold(
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        title: const Text('Calendar'),
-        actions: [
-          const AppTopBarActions(),
-          // Refresh button
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoading
-                ? null
-                : () {
-                    _loadShifts();
-                    _loadAbsenceRequests();
-                  },
-            tooltip: 'Refresh shifts and absence requests',
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: const Text('Calendar'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: _isLoading
+              ? null
+              : () {
+                  _loadShifts();
+                  _loadAbsenceRequests();
+                },
+          tooltip: 'Refresh shifts and absence requests',
+        ),
+      ],
       body: _isLoading && _shifts.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : Column(

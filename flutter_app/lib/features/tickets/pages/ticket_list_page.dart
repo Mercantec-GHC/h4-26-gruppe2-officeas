@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/widgets/app_drawer.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/ticket_model.dart';
 import '../bloc/tickets_bloc.dart';
 import '../bloc/tickets_event.dart';
@@ -168,20 +167,16 @@ class _TicketListBodyState extends State<_TicketListBody> {
     final mutedText = Theme.of(
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
-    return Scaffold(
-      drawer: const AppDrawer(),
-      appBar: AppBar(
-        title: const Text('Tickets'),
-        actions: [
-          const AppTopBarActions(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Opdater',
-            onPressed: () =>
-                context.read<TicketsBloc>().add(const RefreshTickets()),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      title: const Text('Tickets'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          tooltip: 'Opdater',
+          onPressed: () =>
+              context.read<TicketsBloc>().add(const RefreshTickets()),
+        ),
+      ],
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
           if (state is TicketsError) {
