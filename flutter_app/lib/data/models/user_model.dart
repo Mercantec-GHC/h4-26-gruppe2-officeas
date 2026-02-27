@@ -46,7 +46,7 @@ class UserModel {
       email: json['email'] ?? '',
       departmentId: json['department_id'],
       avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? null,
-      departmentName: json['department']?['name'],
+      departmentName: json['department_name'] ?? json['department']?['name'],
       isApproved: json['is_approved'] ?? true,
       approvedAt: json['approved_at'] != null
           ? DateTime.tryParse(json['approved_at'])
@@ -69,6 +69,7 @@ class UserModel {
       'email': email,
       'department_id': departmentId,
       'avatar_url': avatarUrl,
+      'department_name': departmentName,
       'is_approved': isApproved,
       'approved_at': approvedAt?.toIso8601String(),
       'approved_by_user_id': approvedByUserId,
