@@ -93,7 +93,7 @@ func (h Auth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user models.User
-	if err := h.DB.Preload("Department").First(&user, "email = ?", req.Email).Error; err != nil {
+	if err := h.DB.Preload("Department").First(&user, "LOWER(email) = LOWER(?)", req.Email).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 			return
@@ -167,9 +167,9 @@ func (h Auth) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user already exists
+	// Check if user already exists (case-insensitive)
 	var existingUser models.User
-	if err := h.DB.First(&existingUser, "email = ?", req.Email).Error; err == nil {
+	if err := h.DB.First(&existingUser, "LOWER(email) = LOWER(?)", req.Email).Error; err == nil {
 		http.Error(w, "User already exists", http.StatusBadRequest)
 		return
 	}
@@ -259,9 +259,9 @@ func (h Auth) SSOLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Try to find existing user
+	// Try to find existing user (case-insensitive)
 	var user models.User
-	err := h.DB.Preload("Department").First(&user, "email = ?", req.Email).Error
+	err := h.DB.Preload("Department").First(&user, "LOWER(email) = LOWER(?)", req.Email).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Create new user for SSO
@@ -473,9 +473,9 @@ func (h Auth) GitHubCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Try to find or create user
+	// Try to find or create user (case-insensitive email)
 	var user models.User
-	err = h.DB.Preload("Department").First(&user, "email = ?", githubUser.Email).Error
+	err = h.DB.Preload("Department").First(&user, "LOWER(email) = LOWER(?)", githubUser.Email).Error
 
 	if err == gorm.ErrRecordNotFound {
 		// Get first department as default
