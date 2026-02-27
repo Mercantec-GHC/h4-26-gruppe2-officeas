@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../dummy_feedback.dart';
+import '../feedback_page.dart';
 import '../dummy_tickets.dart';
 import '../../tickets/bloc/tickets_bloc.dart';
 import '../../tickets/bloc/tickets_state.dart';
@@ -186,7 +186,7 @@ class _HomePageState extends State<HomePage> {
         'Give feedback',
         () => Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (_) => const DummyFeedbackPage())),
+        ).push(MaterialPageRoute(builder: (_) => const FeedbackPage())),
       ),
       () => _actionCard(
         context,
@@ -325,7 +325,7 @@ class _HomePageState extends State<HomePage> {
                                         () => Navigator.of(context).push(
                                           MaterialPageRoute(
                                             builder: (_) =>
-                                                const DummyFeedbackPage(),
+                                                const FeedbackPage(),
                                           ),
                                         ),
                                         expand: true,

@@ -102,24 +102,81 @@ func (h Feedback) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// (valgfri validering)
-	if req.Rating < 1 || req.Rating > 5 {
-		http.Error(w, "rating must be between 1 and 5", http.StatusBadRequest)
+	if req.Rating < 1 || req.Rating > 10 {
+		http.Error(w, "rating must be between 1 and 10", http.StatusBadRequest)
 		return
 	}
 
-	// 4️⃣ Opret feedback model
-	f := models.Feedback{
-		Id:           uuid.New(),
-		DepartmentId: user.DepartmentId,
-		Rating:       req.Rating,
-		Message:      req.Message, 
+	departmentID := user.DepartmentId
+	if req.DepartmentId != nil && *req.DepartmentId != "" {
+		parsed, err := uuid.Parse(*req.DepartmentId)
+		if err != nil {
+			http.Error(w, "invalid department_id", http.StatusBadRequest)
+			return
+		}
+		var dept models.Department
+		if err := h.DB.First(&dept, "id = ?", parsed).Error; err != nil {
+			http.Error(w, "department not found", http.StatusBadRequest)
+			return
+		}
+		departmentID = dept.Id
 	}
 
-	// 5️⃣ Gem
+	// Shift is required: feedback is about a specific shift (the time period of the experience)
+	if req.ShiftId == nil || *req.ShiftId == "" {
+		http.Error(w, "shift_id is required", http.StatusBadRequest)
+		return
+	}
+	shiftID, err := uuid.Parse(*req.ShiftId)
+	if err != nil {
+		http.Error(w, "invalid shift_id", http.StatusBadRequest)
+		return
+	}
+	var refShift models.Shift
+	if err := h.DB.First(&refShift, "id = ?", shiftID).Error; err != nil {
+		http.Error(w, "shift not found", http.StatusBadRequest)
+		return
+	}
+
+	// Find all users in the department who had a shift overlapping this time (GORM)
+	var overlappingUserIDs []uuid.UUID
+	err = h.DB.Model(&models.Shift{}).
+		Joins("JOIN users ON users.id = shifts.user_id AND users.department_id = ?", departmentID).
+		Where("shifts.start_time < ? AND ? < shifts.end_time", refShift.EndTime, refShift.StartTime).
+		Distinct("shifts.user_id").
+		Pluck("shifts.user_id", &overlappingUserIDs).Error
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(overlappingUserIDs) == 0 {
+		http.Error(w, "no one from that department was on shift at that time", http.StatusBadRequest)
+		return
+	}
+
+	f := models.Feedback{
+		Id:           uuid.New(),
+		DepartmentId: departmentID,
+		ShiftId:      &shiftID,
+		Rating:       req.Rating,
+		Message:      req.Message,
+	}
 	if err := h.DB.Create(&f).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Recompute feedback_rating for each affected user using same GORM-only logic as GET /users/{id}/feedback-rating
+	for _, uid := range overlappingUserIDs {
+		avg, _ := ComputeUserFeedbackRatingGORM(h.DB, uid, departmentID)
+		rating := 0
+		
+		if avg > 0 {
+			// Round to nearest int: int() truncates, so adding 0.5 before converting gives proper rounding (e.g. 7.6 → 8).
+			rating = int(avg + 0.5)
+		}
+
+		h.DB.Model(&models.User{}).Where("id = ?", uid).Update("feedback_rating", rating)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -36,16 +36,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Only attempt to restore auth if we have both token and stored user data
         if (token != null && hasUser) {
           _currentToken = token;
-          // Try to restore user from local storage
-          try {
-            final userMap = await _authService.getUser();
-            if (userMap != null) {
-              _currentUser = UserModel.fromJson(userMap);
-            }
-          } catch (_) {
-            // ignore parse errors
-          }
-
           add(CheckAuthStatus());
         }
       }

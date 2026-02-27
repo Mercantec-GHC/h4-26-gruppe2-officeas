@@ -1,19 +1,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 import '../../data/models/feedback_model.dart';
 
 class FeedbackService {
-  static const String baseUrl = 'http://localhost:8080/api';
+  String get _baseUrl => AppConfig.instance.apiBaseUrl;
 
   Future<void> createFeedback({
     required FeedbackModel feedback,
     required String jwt,
   }) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/feedback'),
+      Uri.parse('$_baseUrl/feedback'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $jwt', 
+        'Authorization': 'Bearer $jwt',
       },
       body: jsonEncode(feedback.toJson()),
     );
@@ -25,9 +26,17 @@ class FeedbackService {
     }
   }
 
-  Future<List<FeedbackModel>> getAllFeedback() async {
+  /// Load all feedback. Pass [jwt] so the request is authorized (GET /feedback is protected).
+  Future<List<FeedbackModel>> getAllFeedback({String? jwt}) async {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+
+    if (jwt != null && jwt.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $jwt';
+    }
+
     final response = await http.get(
-      Uri.parse('$baseUrl/feedback'),
+      Uri.parse('$_baseUrl/feedback'),
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
