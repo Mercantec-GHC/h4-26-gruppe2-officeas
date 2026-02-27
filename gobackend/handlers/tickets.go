@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
 	"time"
 
+	"stuff/internal/upload"
 	"stuff/models"
 
 	"github.com/google/uuid"
@@ -12,9 +15,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Tickets holds DB for ticket handlers
+// Tickets holds DB and upload dir for ticket handlers
 type Tickets struct {
-	DB *gorm.DB
+	DB        *gorm.DB
+	UploadDir string
 }
 
 // List godoc
@@ -346,10 +350,113 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// RegisterTickets adds ticket routes
+// UploadTicketImage godoc
+// @Summary      Upload ticket problem image
+// @Tags         tickets
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id     path      string  true  "Ticket ID"
+// @Param        image  formData  file   true  "Problem image"
+// @Success      200  {object}  models.Ticket
+// @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Router       /tickets/{id}/image [put]
+func (h Tickets) UploadTicketImage(w http.ResponseWriter, r *http.Request) {
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+		return
+	}
+	var t models.Ticket
+	if err := h.DB.First(&t, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "ticket not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	file, _, ext, err := upload.ParseImage(r, upload.FormFieldImage)
+	if err != nil {
+		if errors.Is(err, upload.ErrTooLarge) || errors.Is(err, upload.ErrInvalidType) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	relPath := "tickets/" + t.Id.String() + ext
+	if t.ImagePath != "" {
+		_ = upload.DeleteFile(h.UploadDir, t.ImagePath)
+	}
+	if err := upload.SaveFile(h.UploadDir, relPath, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.DB.Model(&models.Ticket{}).Where("id = ?", id).Update("image_path", relPath).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(t)
+}
+
+// ServeTicketImage godoc
+// @Summary      Serve ticket problem image
+// @Tags         tickets
+// @Produce      image/*
+// @Param        id   path      string  true  "Ticket ID"
+// @Success      200  "Image bytes"
+// @Failure      404  {string}  string  "not found"
+// @Security     BearerAuth
+// @Router       /tickets/{id}/image [get]
+func (h Tickets) ServeTicketImage(w http.ResponseWriter, r *http.Request) {
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+		return
+	}
+	var t models.Ticket
+	if err := h.DB.First(&t, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "ticket not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if t.ImagePath == "" {
+		http.Error(w, "no ticket image", http.StatusNotFound)
+		return
+	}
+	if err := upload.ServeFile(w, h.UploadDir, t.ImagePath); err != nil {
+		if errors.Is(err, upload.ErrPathEscape) || errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// RegisterTickets adds ticket routes. More specific /{id}/image routes are registered before /{id} so they match first.
 func RegisterTickets(router *mux.Router, h Tickets, prefix string) {
 	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(TicketView))).Methods("GET")
 	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(TicketCreate))).Methods("POST")
+	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.ServeTicketImage, RequireTicketAccess())).Methods("GET")
+	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.UploadTicketImage, RequireTicketAccess())).Methods("PUT")
 	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.GetByID, RequireTicketAccess())).Methods("GET")
 	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Update, RequireTicketAccess())).Methods("PUT")
 	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequireTicketAccess())).Methods("DELETE")

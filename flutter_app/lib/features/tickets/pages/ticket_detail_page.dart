@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../core/utils/department_utils.dart';
+import '../../../core/utils/pick_image_bytes.dart';
+import '../../../core/widgets/auth_image.dart';
 import '../../../data/models/ticket_model.dart';
+import '../../../data/repositories/user_repository.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../bloc/tickets_bloc.dart';
 import '../bloc/tickets_event.dart';
@@ -65,6 +68,14 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
           if (state is CommentAddSuccess) {
             _commentController.clear();
           }
+          if (state is TicketUpdateSuccess && state.ticket.imagePath != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Billede uploadet'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
         },
         builder: (context, state) {
           if (state is TicketsLoading && state is! TicketDetailLoaded) {
@@ -83,13 +94,9 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
               ),
               onSendComment: () {
                 final userId = context.read<AuthBloc>().currentUser?.id;
-
                 if (userId == null) return;
-
                 final content = _commentController.text.trim();
-
                 if (content.isEmpty) return;
-
                 context.read<TicketsBloc>().add(
                   AddComment(
                     ticketId: widget.ticketId,
@@ -98,6 +105,14 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
                   ),
                 );
               },
+              onUploadImage: (bytes, filename) =>
+                  context.read<TicketsBloc>().add(
+                    UploadTicketImage(
+                      ticketId: widget.ticketId,
+                      imageBytes: bytes,
+                      filename: filename,
+                    ),
+                  ),
             );
           }
 
@@ -129,6 +144,14 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
                   ),
                 );
               },
+              onUploadImage: (bytes, filename) =>
+                  context.read<TicketsBloc>().add(
+                    UploadTicketImage(
+                      ticketId: widget.ticketId,
+                      imageBytes: bytes,
+                      filename: filename,
+                    ),
+                  ),
             );
           }
           if (state is CommentAddSuccess) {
@@ -159,6 +182,14 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
                   ),
                 );
               },
+              onUploadImage: (bytes, filename) =>
+                  context.read<TicketsBloc>().add(
+                    UploadTicketImage(
+                      ticketId: widget.ticketId,
+                      imageBytes: bytes,
+                      filename: filename,
+                    ),
+                  ),
             );
           }
 
@@ -175,6 +206,7 @@ class _DetailContent extends StatelessWidget {
   final ValueChanged<String> onStatusChanged;
   final bool canChangeStatus;
   final VoidCallback onSendComment;
+  final void Function(List<int> bytes, String filename)? onUploadImage;
 
   const _DetailContent({
     required this.ticket,
@@ -182,6 +214,7 @@ class _DetailContent extends StatelessWidget {
     required this.onStatusChanged,
     required this.canChangeStatus,
     required this.onSendComment,
+    this.onUploadImage,
   });
 
   static const List<String> _statuses = [
@@ -206,6 +239,21 @@ class _DetailContent extends StatelessWidget {
         return 'Annulleret';
       default:
         return s;
+    }
+  }
+
+  Future<void> _pickAndUploadImage(BuildContext context) async {
+    try {
+      final result = await pickImageBytes(context);
+      if (result != null && context.mounted) {
+        onUploadImage!(result.bytes, result.filename);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fejl: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -265,6 +313,42 @@ class _DetailContent extends StatelessWidget {
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+            ),
+          ],
+          if (ticket.imagePath != null && ticket.imagePath!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Billede af problemet',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: double.infinity,
+                height: 200,
+                child: AuthImage(
+                  imageUrl: UserRepository.imageUrl(
+                    '/tickets/${ticket.id}/image?v=${ticket.updatedAt.millisecondsSinceEpoch}',
+                  ),
+                  token: context.read<AuthBloc>().currentToken,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
+          if (onUploadImage != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _pickAndUploadImage(context),
+              icon: const Icon(Icons.add_photo_alternate),
+              label: Text(
+                ticket.imagePath != null && ticket.imagePath!.isNotEmpty
+                    ? 'Skift billede'
+                    : 'Tilføj billede af problemet',
+              ),
             ),
           ],
           const SizedBox(height: 24),

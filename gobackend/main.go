@@ -150,17 +150,25 @@ func main() {
 	protectedRouter.Use(handlers.AuthMiddleware)
 	handlers.SetAuthorizationService(db)
 
+	// Upload directory for profile and ticket images (default ./uploads)
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+
+	// Departments (protected)
 	// Feedback CRUD -> POST /feedback (auth via middleware on same router)
 	handlers.RegisterFeedback(protectedRouter, handlers.Feedback{DB: db}, "/feedback")
 
 	// Departments (protected) -> GET/POST /departments
 	handlers.RegisterDepartments(protectedRouter, handlers.Departments{DB: db}, "/departments")
 
-	// Users CRUD (protected)
-	handlers.RegisterUsers(protectedRouter, handlers.Users{DB: db}, "/users")
+	// Users CRUD (protected) + profile image upload/serve
+	handlers.RegisterUsers(protectedRouter, handlers.Users{DB: db, UploadDir: uploadDir}, "/users")
 
-	// Tickets CRUD (protected)
-	handlers.RegisterTickets(protectedRouter, handlers.Tickets{DB: db}, "/tickets")
+	// Tickets CRUD (protected) + ticket image upload/serve
+	handlers.RegisterTickets(protectedRouter, handlers.Tickets{DB: db, UploadDir: uploadDir}, "/tickets")
 
 	// Shifts CRUD (protected)
 	handlers.RegisterShifts(protectedRouter, handlers.Shifts{DB: db}, "/shifts")

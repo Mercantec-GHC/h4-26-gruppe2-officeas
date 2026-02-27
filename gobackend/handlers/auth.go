@@ -120,6 +120,7 @@ func (h Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setUserAvatarURL(&user)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
 		Token: token,
@@ -327,6 +328,7 @@ func (h Auth) SSOLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setUserAvatarURL(&user)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
 		Token: token,
@@ -532,6 +534,7 @@ func (h Auth) GitHubCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	setUserAvatarURL(&user)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
 		Token: token,

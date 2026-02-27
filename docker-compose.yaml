@@ -19,6 +19,8 @@ services:
       - "8080"
     env_file:
       - ./gobackend/.env
+    volumes:
+      - uploads_data:/root/uploads
     networks:
       - app-network
 
@@ -34,6 +36,9 @@ services:
       - backend
     networks:
       - app-network
+
+volumes:
+  uploads_data:
 
 networks:
   app-network:

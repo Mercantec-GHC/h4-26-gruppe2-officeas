@@ -1,8 +1,15 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../core/di/injection.dart';
+import '../../core/utils/pick_image_bytes.dart';
+import '../../core/widgets/auth_image.dart';
 import '../../core/widgets/app_topbar_actions.dart';
 import '../../data/models/user_model.dart';
+import '../../data/repositories/user_repository.dart';
 import '../auth/bloc/auth_bloc.dart';
+import '../auth/bloc/auth_event.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -13,6 +20,7 @@ class AccountPage extends StatefulWidget {
 
 class _AccountPageState extends State<AccountPage> {
   bool _isEditing = false;
+  Uint8List? _profileImageBytes;
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _departmentController;
@@ -35,6 +43,54 @@ class _AccountPageState extends State<AccountPage> {
     _emailController.dispose();
     _departmentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openCamera() async {
+    try {
+      final result = await pickImageBytes(context);
+      if (result == null || !mounted) return;
+
+      setState(() => _profileImageBytes = Uint8List.fromList(result.bytes));
+      await _uploadProfileImage(result.bytes, result.filename);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fejl: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadProfileImage(List<int> bytes, String filename) async {
+    final authBloc = context.read<AuthBloc>();
+    try {
+      final userRepo = getIt<UserRepository>();
+      final updatedUser = await userRepo.uploadProfileImage(
+        bytes,
+        filename: filename,
+      );
+
+      if (!mounted) return;
+
+      authBloc.add(UserUpdated(updatedUser));
+      setState(() => _profileImageBytes = null);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profilbillede uploadet'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload fejlede: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _toggleEdit() {
@@ -102,7 +158,15 @@ class _AccountPageState extends State<AccountPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Account'),
-        actions: const [AppTopBarActions(showAccount: false)],
+        backgroundColor: const Color(0xFF0A66FF),
+        actions: [
+          IconButton(
+            onPressed: () => authBloc.add(LogoutRequested()),
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+          ),
+          const AppTopBarActions(showAccount: false),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -145,6 +209,7 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _profileCard(BuildContext context, UserModel? user) {
+    final authBloc = context.read<AuthBloc>();
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondaryText = Theme.of(
@@ -158,6 +223,35 @@ class _AccountPageState extends State<AccountPage> {
                     .join() ??
                 '')
             .toUpperCase();
+    final avatarBg = isDark
+        ? scheme.surfaceContainerHighest
+        : Colors.blue.shade50;
+    final avatarWidget = _profileImageBytes != null
+        ? CircleAvatar(
+            radius: 44,
+            backgroundColor: avatarBg,
+            foregroundImage: MemoryImage(_profileImageBytes!),
+          )
+        : user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+        ? ClipOval(
+            child: SizedBox(
+              width: 88,
+              height: 88,
+              child: AuthImage(
+                imageUrl: UserRepository.imageUrl(user.avatarUrl!),
+                token: authBloc.currentToken,
+                fit: BoxFit.cover,
+              ),
+            ),
+          )
+        : CircleAvatar(
+            radius: 44,
+            backgroundColor: avatarBg,
+            child: Text(
+              initials,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+            ),
+          );
     return Card(
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -168,6 +262,7 @@ class _AccountPageState extends State<AccountPage> {
           children: [
             Row(
               children: [
+                avatarWidget,
                 CircleAvatar(
                   radius: 44,
                   backgroundColor: isDark
@@ -253,6 +348,17 @@ class _AccountPageState extends State<AccountPage> {
                 _statTile(context, 'Rating', '${user?.feedbackRating ?? 0}'),
               ],
             ),
+            const SizedBox(height: 12),
+            // Image actions (camera)
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _openCamera,
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Tag billede'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -316,16 +422,13 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Widget _editableRow(String label, TextEditingController controller) {
-    final labelColor = Theme.of(
-      context,
-    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.78);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           SizedBox(
             width: 140,
-            child: Text(label, style: TextStyle(color: labelColor)),
+            child: Text(label, style: const TextStyle(color: Colors.black54)),
           ),
           Expanded(
             child: TextField(

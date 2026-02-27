@@ -127,9 +127,8 @@ class MyApp extends StatelessWidget {
                       const ItSupportGuard(child: TicketListPage()),
                   '/tickets/new': (context) => const CreateTicketPage(),
                   '/users/approvals': (context) => const UserApprovalsPage(),
-                  '/users/ratings': (context) => const _LedelseHrGuard(
-                        child: UserRatingsOverviewPage(),
-                      ),
+                  '/users/ratings': (context) =>
+                      const _LedelseHrGuard(child: UserRatingsOverviewPage()),
                   '/navigation': (context) => const MainNavigation(),
                 },
               );
@@ -153,12 +152,12 @@ class _LedelseHrGuard extends StatelessWidget {
     if (!canApproveAccounts(user)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/home', (route) => false);
         }
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return child;
   }

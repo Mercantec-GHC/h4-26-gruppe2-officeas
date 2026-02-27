@@ -93,9 +93,13 @@ type User struct {
 	IsApproved       bool       `gorm:"not null;default:false" json:"is_approved"`
 	ApprovedAt       *time.Time `json:"approved_at"`
 	ApprovedByUserId *uuid.UUID `gorm:"type:uuid" json:"approved_by_user_id"`
-	FeedbackRating   int        `gorm:"default:0" json:"feedback_rating"`
-	CreatedAt        time.Time  `json:"created_at"`
-	UpdatedAt        time.Time  `json:"updated_at"`
+	FeedbackRating    int        `gorm:"default:0" json:"feedback_rating"`
+	ProfileImagePath  string     `gorm:"type:varchar(512)" json:"profile_image_path,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+
+	// AvatarURL is computed for API responses when ProfileImagePath is set (gorm:"-" so not stored).
+	AvatarURL string `gorm:"-" json:"avatar_url,omitempty"`
 
 	// Relations
 	Department       Department              `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
@@ -122,6 +126,7 @@ type Ticket struct {
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 	ResolvedAt       *time.Time   `json:"resolved_at"`
+	ImagePath        string       `gorm:"type:varchar(512)" json:"image_path,omitempty"`
 
 	// Relations
 	CreatedByUser  User            `gorm:"foreignKey:CreatedByUserId" json:"created_by_user,omitempty"`

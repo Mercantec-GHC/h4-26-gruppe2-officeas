@@ -3,6 +3,7 @@ class UserModel {
   final String name;
   final String email;
   final String? departmentId;
+  final String? avatarUrl;
   final String? departmentName;
   final bool isApproved;
   final DateTime? approvedAt;
@@ -16,6 +17,7 @@ class UserModel {
     required this.name,
     required this.email,
     this.departmentId,
+    this.avatarUrl,
     this.departmentName,
     this.isApproved = true,
     this.approvedAt,
@@ -43,6 +45,7 @@ class UserModel {
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       departmentId: json['department_id'],
+      avatarUrl: json['avatar_url'] ?? json['avatarUrl'] ?? null,
       departmentName: json['department']?['name'],
       isApproved: json['is_approved'] ?? true,
       approvedAt: json['approved_at'] != null
@@ -65,6 +68,7 @@ class UserModel {
       'name': name,
       'email': email,
       'department_id': departmentId,
+      'avatar_url': avatarUrl,
       'is_approved': isApproved,
       'approved_at': approvedAt?.toIso8601String(),
       'approved_by_user_id': approvedByUserId,

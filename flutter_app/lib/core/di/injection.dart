@@ -1,5 +1,6 @@
 import 'package:get_it/get_it.dart';
 import '../../data/repositories/ticket_repository.dart';
+import '../../data/repositories/user_repository.dart';
 import '../../features/tickets/bloc/tickets_bloc.dart';
 import '../../features/messaging/bloc/messaging_bloc.dart';
 import '../../data/datasources/shift_remote_datasource.dart';
@@ -100,6 +101,7 @@ Future<void> setupDependencyInjection() async {
   );
 
   getIt.registerLazySingleton<TicketRepository>(() => TicketRepository());
+  getIt.registerLazySingleton<UserRepository>(() => UserRepository());
   // TODO: Tilføj flere repositories her efterhånden:
   // getIt.registerLazySingleton<UserRepository>(
   //   () => UserRepositoryImpl(

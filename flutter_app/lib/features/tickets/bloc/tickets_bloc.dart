@@ -19,6 +19,7 @@ class TicketsBloc extends Bloc<TicketsEvent, TicketsState> {
     on<UpdateTicketStatus>(_onUpdateTicketStatus);
     on<AddComment>(_onAddComment);
     on<ClearTicketDetail>(_onClearTicketDetail);
+    on<UploadTicketImage>(_onUploadTicketImage);
   }
 
   List<TicketModel> get cachedTickets => List.unmodifiable(_cachedTickets);
@@ -148,6 +149,24 @@ class TicketsBloc extends Bloc<TicketsEvent, TicketsState> {
       emit(const TicketsInitial());
     } else {
       emit(TicketsListLoaded(_cachedTickets));
+    }
+  }
+
+  Future<void> _onUploadTicketImage(
+    UploadTicketImage event,
+    Emitter<TicketsState> emit,
+  ) async {
+    try {
+      final ticket = await _repository.uploadTicketImage(
+        event.ticketId,
+        event.imageBytes,
+        filename: event.filename,
+      );
+      final index = _cachedTickets.indexWhere((t) => t.id == ticket.id);
+      if (index >= 0) _cachedTickets[index] = ticket;
+      emit(TicketUpdateSuccess(ticket));
+    } catch (e) {
+      emit(TicketsError(e.toString()));
     }
   }
 }
