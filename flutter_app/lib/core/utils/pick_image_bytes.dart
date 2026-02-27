@@ -7,7 +7,7 @@ import 'read_image_bytes.dart';
 /// Result of a successful image pick: raw bytes and a suggested filename.
 typedef PickImageResult = ({List<int> bytes, String filename});
 
-/// Shows a bottom sheet (Tag billede / Vælg fra galleri), then either opens
+/// Shows a bottom sheet (Take photo / Choose from gallery), then either opens
 /// the camera or gallery, and returns the image bytes and filename.
 ///
 /// Returns `null` if the user cancels (dismisses sheet or picker without selecting).
@@ -20,12 +20,12 @@ Future<PickImageResult?> pickImageBytes(BuildContext context) async {
         children: [
           ListTile(
             leading: const Icon(Icons.camera_alt),
-            title: const Text('Tag billede'),
+            title: const Text('Take photo'),
             onTap: () => Navigator.pop(ctx, ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(Icons.photo_library),
-            title: const Text('Vælg fra galleri'),
+            title: const Text('Choose from gallery'),
             onTap: () => Navigator.pop(ctx, ImageSource.gallery),
           ),
         ],

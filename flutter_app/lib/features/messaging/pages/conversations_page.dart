@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -28,8 +29,9 @@ class _ConversationsPageState extends State<ConversationsPage> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
-        title: const Text('Beskeder'),
+        title: const Text('Messages'),
         actions: const [AppTopBarActions()],
       ),
       body: BlocBuilder<MessagingBloc, MessagingState>(
@@ -130,7 +132,7 @@ class _ConversationTile extends StatelessWidget {
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final name = conversation.displayNameWithDepartment(currentUserId);
     final preview = conversation.lastMessagePreview.isEmpty
-        ? 'Ingen beskeder endnu'
+        ? 'No messages yet'
         : conversation.lastMessagePreview;
     final time = _formatTime(conversation.lastMessageAt);
     final unread = conversation.unreadCount;
@@ -215,7 +217,7 @@ class _ConversationTile extends StatelessWidget {
     if (dt == null) return '';
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Nu';
+    if (diff.inMinutes < 1) return 'Now';
     if (diff.inHours < 1) return '${diff.inMinutes} min';
     if (diff.inDays < 1) {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -242,7 +244,7 @@ class _EmptyView extends StatelessWidget {
           Icon(Icons.chat_bubble_outline, size: 64, color: subtitleColor),
           const SizedBox(height: 16),
           Text(
-            'Ingen samtaler endnu',
+            'No conversations yet',
             style: TextStyle(fontSize: 16, color: subtitleColor),
           ),
         ],

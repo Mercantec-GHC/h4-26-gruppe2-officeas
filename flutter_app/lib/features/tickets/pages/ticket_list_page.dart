@@ -77,15 +77,15 @@ class _TicketListBodyState extends State<_TicketListBody> {
   String _statusLabel(String status) {
     switch (status) {
       case 'OPEN':
-        return 'Åben';
+        return 'Open';
       case 'IN_PROGRESS':
-        return 'I gang';
+        return 'In progress';
       case 'RESOLVED':
-        return 'Løst';
+        return 'Resolved';
       case 'CLOSED':
-        return 'Lukket';
+        return 'Closed';
       case 'CANCELLED':
-        return 'Annulleret';
+        return 'Cancelled';
       default:
         return status;
     }
@@ -118,7 +118,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
               controller: _searchController,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: 'Søg tickets',
+                hintText: 'Search tickets',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -142,12 +142,12 @@ class _TicketListBodyState extends State<_TicketListBody> {
         children: statuses.map((s) {
           final selected = s == _statusFilter;
           final label = s == 'ALL'
-              ? 'Alle'
+              ? 'All'
               : (s == 'OPEN'
-                    ? 'Åben'
+                    ? 'Open'
                     : s == 'IN_PROGRESS'
-                    ? 'I gang'
-                    : 'Løst');
+                    ? 'In progress'
+                    : 'Resolved');
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: ChoiceChip(
@@ -234,14 +234,14 @@ class _TicketListBodyState extends State<_TicketListBody> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Ingen tickets endnu',
+                    'No tickets yet',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.grey.shade700,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Opret din første ticket',
+                    'Create your first ticket',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Colors.grey.shade600,
                     ),
@@ -314,7 +314,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
                   const SizedBox(height: 12),
                   if (selected.createdByName != null)
                     Text(
-                      'Oprettet af ${selected.createdByName}',
+                      'Created by ${selected.createdByName}',
                       style: Theme.of(
                         context,
                       ).textTheme.bodyMedium?.copyWith(color: mutedText),
@@ -338,12 +338,12 @@ class _TicketListBodyState extends State<_TicketListBody> {
                                 TicketDetailPage(ticketId: selected.id),
                           ),
                         ),
-                        child: const Text('Åbn'),
+                        child: const Text('Open'),
                       ),
                       const SizedBox(width: 8),
                       OutlinedButton(
                         onPressed: () {},
-                        child: const Text('Tildel'),
+                        child: const Text('Assign'),
                       ),
                     ],
                   ),
@@ -380,7 +380,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
             builder: (context) => const CreateTicketPage(),
           ),
         ),
-        tooltip: 'Opret ticket',
+        tooltip: 'Create ticket',
         child: const Icon(Icons.add),
       ),
     );
@@ -423,7 +423,7 @@ class _TicketCard extends StatelessWidget {
               ),
               if (ticket.createdByName != null)
                 Text(
-                  'Oprettet af ${ticket.createdByName} · $created',
+                  'Created by ${ticket.createdByName} · $created',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: mutedText),
@@ -442,15 +442,15 @@ class _TicketCard extends StatelessWidget {
   String _statusLabel(String status) {
     switch (status) {
       case 'OPEN':
-        return 'Åben';
+        return 'Open';
       case 'IN_PROGRESS':
-        return 'I gang';
+        return 'In progress';
       case 'RESOLVED':
-        return 'Løst';
+        return 'Resolved';
       case 'CLOSED':
-        return 'Lukket';
+        return 'Closed';
       case 'CANCELLED':
-        return 'Annulleret';
+        return 'Cancelled';
       default:
         return status;
     }

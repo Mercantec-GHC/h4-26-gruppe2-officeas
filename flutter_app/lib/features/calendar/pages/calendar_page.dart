@@ -7,6 +7,7 @@ import '../../../domain/entities/absence_request_entity.dart';
 import '../../../domain/repositories/shift_repository.dart';
 import '../../../domain/repositories/absence_request_repository.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
+import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
 import '../dialogs/create_absence_request_dialog.dart';
 
@@ -208,6 +209,7 @@ class _CalendarPageState extends State<CalendarPage> {
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: const Text('Calendar'),
         actions: [

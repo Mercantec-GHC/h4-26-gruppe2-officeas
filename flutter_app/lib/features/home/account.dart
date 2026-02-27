@@ -77,7 +77,7 @@ class _AccountPageState extends State<AccountPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profilbillede uploadet'),
+          content: Text('Profile picture uploaded'),
           backgroundColor: Colors.green,
         ),
       );
@@ -86,7 +86,7 @@ class _AccountPageState extends State<AccountPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Upload fejlede: $e'),
+          content: Text('Upload failed: $e'),
           backgroundColor: Colors.red,
         ),
       );

@@ -144,22 +144,11 @@ class _HomePageState extends State<HomePage> {
               ElevatedButton.icon(
                 onPressed: () => Navigator.of(context).pushNamed('/calendar'),
                 icon: const Icon(Icons.calendar_today),
-                label: const Text('Åbn kalender'),
+                label: const Text('Open calendar'),
               ),
             ],
           ),
         ],
-      ),
-    );
-
-    final moreFeaturesText = Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Text(
-        'More features coming soon...',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: subduedText,
-          fontStyle: FontStyle.italic,
-        ),
       ),
     );
 
@@ -239,8 +228,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 20),
                 _buildTicketsSection(context, showTickets),
-                const SizedBox(height: 24),
-                moreFeaturesText,
               ],
             ),
           );
@@ -388,7 +375,7 @@ class _HomePageState extends State<HomePage> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        'Seneste tickets',
+                                        'Recent tickets',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleMedium
@@ -405,7 +392,7 @@ class _HomePageState extends State<HomePage> {
                                                     const TicketListPage(),
                                               ),
                                             ),
-                                        child: const Text('Se alle'),
+                                        child: const Text('View all'),
                                       ),
                                     ],
                                   ),
@@ -416,7 +403,7 @@ class _HomePageState extends State<HomePage> {
                                         vertical: 16,
                                       ),
                                       child: Text(
-                                        'Ingen tickets endnu. Opret en fra ticket-siden.',
+                                        'No tickets yet. Create one from the tickets page.',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyMedium
@@ -476,15 +463,15 @@ class _HomePageState extends State<HomePage> {
   String _statusLabel(String status) {
     switch (status) {
       case 'OPEN':
-        return 'Åben';
+        return 'Open';
       case 'IN_PROGRESS':
-        return 'I gang';
+        return 'In progress';
       case 'RESOLVED':
-        return 'Løst';
+        return 'Resolved';
       case 'CLOSED':
-        return 'Lukket';
+        return 'Closed';
       case 'CANCELLED':
-        return 'Annulleret';
+        return 'Cancelled';
       default:
         return status;
     }
@@ -707,7 +694,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Seneste tickets',
+                  'Recent tickets',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: scheme.primary,
@@ -721,7 +708,7 @@ class _HomePageState extends State<HomePage> {
                           : const DummyTicketsPage(),
                     ),
                   ),
-                  child: const Text('Se alle'),
+                  child: const Text('View all'),
                 ),
               ],
             ),
@@ -768,7 +755,7 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Seneste tickets',
+                    'Recent tickets',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: scheme.primary,
@@ -780,7 +767,7 @@ class _HomePageState extends State<HomePage> {
                         builder: (context) => const TicketListPage(),
                       ),
                     ),
-                    child: const Text('Se alle'),
+                    child: const Text('View all'),
                   ),
                 ],
               ),
@@ -789,7 +776,7 @@ class _HomePageState extends State<HomePage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    'Ingen tickets endnu. Opret en fra ticket-siden.',
+                    'No tickets yet. Create one from the tickets page.',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: subduedText),

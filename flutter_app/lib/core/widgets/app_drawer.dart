@@ -30,12 +30,42 @@ class AppDrawer extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.home),
-            title: const Text('Forside'),
+            title: const Text('Home'),
             onTap: () {
               Navigator.pop(context);
               Navigator.of(
                 context,
               ).pushNamedAndRemoveUntil('/home', (route) => false);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.chat_bubble_outline),
+            title: const Text('Messages'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/messages', (route) => false);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_today),
+            title: const Text('Calendar'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/calendar', (route) => false);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.notifications_none),
+            title: const Text('Notifications'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/notifications', (route) => false);
             },
           ),
           if (showTickets)
@@ -49,7 +79,7 @@ class AppDrawer extends StatelessWidget {
             ),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Opret ticket'),
+            title: const Text('Create ticket'),
             onTap: () {
               Navigator.pop(context);
               Navigator.of(context).pushNamed('/tickets/new');
@@ -73,17 +103,10 @@ class AppDrawer extends StatelessWidget {
                 Navigator.of(context).pushNamed('/users/ratings');
               },
             ),
-          ListTile(
-            leading: const Icon(Icons.calendar_month),
-            title: const Text('Skema'),
-            subtitle: const Text('Kommer snart'),
-            enabled: false,
-            onTap: () {},
-          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text('Log ud'),
+            title: const Text('Log out'),
             onTap: () {
               final authBloc = context.read<AuthBloc>();
               Navigator.pop(context);

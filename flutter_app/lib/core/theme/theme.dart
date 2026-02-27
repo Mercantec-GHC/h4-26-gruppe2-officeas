@@ -27,13 +27,6 @@ final appTheme = ThemeData(
     backgroundColor: AppColors.primary,
     contentTextStyle: TextStyle(color: Colors.white),
   ),
-  bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-    backgroundColor: Colors.white,
-    selectedItemColor: AppColors.primary,
-    unselectedItemColor: Color(0xFF5F6B7A),
-    showUnselectedLabels: true,
-    type: BottomNavigationBarType.fixed,
-  ),
   useMaterial3: true,
 );
 
@@ -71,16 +64,6 @@ final appDarkTheme = ThemeData(
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: AppColors.primary,
     contentTextStyle: TextStyle(color: Colors.white),
-  ),
-  bottomNavigationBarTheme: BottomNavigationBarThemeData(
-    backgroundColor: const Color(0xFF1E1E1E),
-    selectedItemColor: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.dark,
-    ).primary,
-    unselectedItemColor: Colors.white70,
-    showUnselectedLabels: true,
-    type: BottomNavigationBarType.fixed,
   ),
   useMaterial3: true,
 );

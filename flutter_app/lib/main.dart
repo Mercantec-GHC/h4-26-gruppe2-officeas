@@ -129,7 +129,6 @@ class MyApp extends StatelessWidget {
                   '/users/approvals': (context) => const UserApprovalsPage(),
                   '/users/ratings': (context) =>
                       const _LedelseHrGuard(child: UserRatingsOverviewPage()),
-                  '/navigation': (context) => const MainNavigation(),
                 },
               );
             },
@@ -162,9 +161,6 @@ class _LedelseHrGuard extends StatelessWidget {
     return child;
   }
 }
-
-/// Route paths for bottom bar tabs (so e.g. /calendar opens calendar tab).
-const _tabRoutes = ['/home', '/messages', '/calendar', '/notifications'];
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key, this.initialIndex = 0});
@@ -207,30 +203,6 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (index == _selectedIndex) return;
-          Navigator.of(
-            context,
-          ).pushNamedAndRemoveUntil(_tabRoutes[index], (route) => false);
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Messages',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none),
-            label: 'Notifikationer',
-          ),
-        ],
-      ),
     );
   }
 }

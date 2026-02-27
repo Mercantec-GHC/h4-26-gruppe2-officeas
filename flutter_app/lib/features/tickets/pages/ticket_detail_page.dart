@@ -71,7 +71,7 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
           if (state is TicketUpdateSuccess && state.ticket.imagePath != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Billede uploadet'),
+                content: Text('Image uploaded'),
                 backgroundColor: Colors.green,
               ),
             );
@@ -228,15 +228,15 @@ class _DetailContent extends StatelessWidget {
   static String _statusLabel(String s) {
     switch (s) {
       case 'OPEN':
-        return 'Åben';
+        return 'Open';
       case 'IN_PROGRESS':
-        return 'I gang';
+        return 'In progress';
       case 'RESOLVED':
-        return 'Løst';
+        return 'Resolved';
       case 'CLOSED':
-        return 'Lukket';
+        return 'Closed';
       case 'CANCELLED':
-        return 'Annulleret';
+        return 'Cancelled';
       default:
         return s;
     }
@@ -251,7 +251,7 @@ class _DetailContent extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fejl: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -301,7 +301,7 @@ class _DetailContent extends StatelessWidget {
           const SizedBox(height: 8),
           if (ticket.createdByName != null)
             Text(
-              'Oprettet af ${ticket.createdByName} · ${DateFormat('dd/MM/yyyy HH:mm').format(ticket.createdAt)}',
+              'Created by ${ticket.createdByName} · ${DateFormat('dd/MM/yyyy HH:mm').format(ticket.createdAt)}',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
@@ -309,7 +309,7 @@ class _DetailContent extends StatelessWidget {
           if (ticket.assignedToName != null) ...[
             const SizedBox(height: 4),
             Text(
-              'Tildelt til ${ticket.assignedToName}',
+              'Assigned to ${ticket.assignedToName}',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
@@ -318,7 +318,7 @@ class _DetailContent extends StatelessWidget {
           if (ticket.imagePath != null && ticket.imagePath!.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text(
-              'Billede af problemet',
+              'Problem image',
               style: Theme.of(
                 context,
               ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -370,7 +370,7 @@ class _DetailContent extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          c.userName ?? 'Bruger',
+                          c.userName ?? 'User',
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,

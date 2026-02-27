@@ -54,7 +54,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Opret ticket'),
+        title: const Text('Create ticket'),
         actions: const [AppTopBarActions()],
       ),
       body: BlocConsumer<TicketsBloc, TicketsState>(
@@ -70,7 +70,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
           if (state is TicketCreateSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Ticket oprettet'),
+                content: Text('Ticket created'),
                 backgroundColor: Colors.green,
               ),
             );
@@ -89,13 +89,13 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
                   TextFormField(
                     controller: _titleController,
                     decoration: const InputDecoration(
-                      labelText: 'Titel',
+                      labelText: 'Title',
                       border: OutlineInputBorder(),
                     ),
                     enabled: !loading,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
-                        return 'Angiv en titel';
+                        return 'Enter a title';
                       }
                       return null;
                     },
@@ -104,7 +104,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
                   TextFormField(
                     controller: _descriptionController,
                     decoration: const InputDecoration(
-                      labelText: 'Beskrivelse',
+                      labelText: 'Description',
                       border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
@@ -112,7 +112,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
                     enabled: !loading,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
-                        return 'Angiv en beskrivelse';
+                        return 'Enter a description';
                       }
                       return null;
                     },

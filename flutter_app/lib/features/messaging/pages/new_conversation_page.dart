@@ -57,7 +57,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Kunne ikke hente brugere. Prøv igen.';
+          _error = 'Could not fetch users. Try again.';
           _isLoading = false;
         });
       }
@@ -165,7 +165,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ny samtale'),
+        title: const Text('New conversation'),
         actions: [
           const AppTopBarActions(),
           TextButton(
@@ -173,7 +173,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
                 ? null
                 : _createOrSendToSelection,
             child: Text(
-              _isSubmitting ? 'SENDER...' : 'NÆSTE',
+              _isSubmitting ? 'SENDING...' : 'NEXT',
               style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
             ),
           ),
@@ -188,7 +188,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Søg efter navn eller e-mail...',
+                hintText: 'Search by name or email...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
@@ -212,7 +212,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
               maxLines: 2,
               decoration: InputDecoration(
                 hintText:
-                    'Valgfri: skriv første besked til alle valgte brugere',
+                    'Optional: write first message to all selected users',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -272,7 +272,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
                 });
                 _loadUsers();
               },
-              child: const Text('Prøv igen'),
+              child: const Text('Try again'),
             ),
           ],
         ),
@@ -282,8 +282,8 @@ class _NewConversationPageState extends State<NewConversationPage> {
       return Center(
         child: Text(
           _searchController.text.isEmpty
-              ? 'Ingen brugere fundet'
-              : 'Ingen resultater for "${_searchController.text}"',
+              ? 'No users found'
+              : 'No results for "${_searchController.text}"',
           style: TextStyle(
             color: Theme.of(
               context,

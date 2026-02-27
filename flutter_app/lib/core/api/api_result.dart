@@ -115,19 +115,19 @@ sealed class ApiException implements Exception {
   /// Unauthorized (401) - bruges til at håndtere login redirect
   factory ApiException.unauthorized(String message) = UnauthorizedException;
 
-  /// Brugervenlig fejlbesked
+  /// User-friendly error message
   String get userMessage {
     return when(
-      network: (_) => 'Ingen internetforbindelse. Tjek din netværksforbindelse.',
-      server: (_) => 'Der opstod en serverfejl. Prøv igen senere.',
-      client: (e) => e.statusCode == 404 
-          ? 'Data blev ikke fundet.'
+      network: (_) => 'No internet connection. Check your network connection.',
+      server: (_) => 'A server error occurred. Please try again later.',
+      client: (e) => e.statusCode == 404
+          ? 'Data was not found.'
           : e.statusCode == 403
-              ? 'Du har ikke adgang til denne ressource.'
+              ? 'You do not have access to this resource.'
               : message,
-      parsing: (_) => 'Kunne ikke læse data fra serveren.',
-      unauthorized: (_) => 'Du skal logge ind igen.',
-      unknown: (_) => 'Der opstod en uventet fejl.',
+      parsing: (_) => 'Could not read data from the server.',
+      unauthorized: (_) => 'Please sign in again.',
+      unknown: (_) => 'An unexpected error occurred.',
     );
   }
 
