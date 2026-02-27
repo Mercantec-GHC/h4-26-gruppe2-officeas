@@ -7,6 +7,7 @@ import '../../../domain/entities/absence_request_entity.dart';
 import '../../../domain/repositories/shift_repository.dart';
 import '../../../domain/repositories/absence_request_repository.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
+import '../../../core/utils/department_utils.dart';
 import '../../../core/widgets/app_drawer.dart';
 import '../../../core/widgets/app_topbar_actions.dart';
 import '../dialogs/create_absence_request_dialog.dart';
@@ -80,6 +81,7 @@ class _CalendarPageState extends State<CalendarPage> {
   List<ShiftEntity> _shifts = [];
   List<AbsenceRequestEntity> _absenceRequests = [];
   bool _isLoading = false;
+  bool _isGenerating = false;
 
   @override
   void initState() {
@@ -165,6 +167,53 @@ class _CalendarPageState extends State<CalendarPage> {
           shift.startTime.isAtSameMomentAs(start) ||
           shift.startTime.isAtSameMomentAs(end);
     }).toList();
+  }
+
+  /// Generate shifts for the selected date range (Ledelse only).
+  Future<void> _generateShifts() async {
+    if (_startDate == null || _endDate == null) return;
+    setState(() => _isGenerating = true);
+
+    final result = await widget.shiftRepository.generateShifts(
+      startDate: _startDate!,
+      endDate: _endDate!,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _isGenerating = false);
+
+    result.when(
+      success: (res) {
+        final count = res.created.length;
+
+        final msg = count == 0
+            ? 'No new shifts created.'
+            : 'Created $count shift${count == 1 ? '' : 's'}.';
+
+        final withWarnings = res.warnings.isNotEmpty
+            ? ' ${res.warnings.length} warning(s): ${res.warnings.take(2).join('; ')}${res.warnings.length > 2 ? '...' : ''}'
+            : '';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg + withWarnings),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        _loadShifts();
+      },
+      failure: (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate shifts: ${error.message}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      },
+    );
   }
 
   /// Show absence request dialog
@@ -512,6 +561,47 @@ class _CalendarPageState extends State<CalendarPage> {
                                         ),
                                       ),
                                     ),
+                                    if (isLedelseDepartment(
+                                      context.read<AuthBloc>().currentUser,
+                                    )) ...[
+                                      const SizedBox(height: 6.0),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          onPressed: _isGenerating
+                                              ? null
+                                              : _generateShifts,
+                                          icon: _isGenerating
+                                              ? const SizedBox(
+                                                  width: 16,
+                                                  height: 16,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Icon(
+                                                  Icons.add_circle_outline,
+                                                  size: 16,
+                                                ),
+                                          label: Text(
+                                            _isGenerating
+                                                ? 'Creating shifts…'
+                                                : 'Create shifts',
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                Colors.blue.shade700,
+                                            foregroundColor: isDark
+                                                ? scheme.onPrimary
+                                                : Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 6.0,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ],
                               ),
