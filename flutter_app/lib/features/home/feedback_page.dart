@@ -93,7 +93,12 @@ class _FeedbackPageState extends State<FeedbackPage> {
       final seen = <String>{};
       final uniqueSlots = <ShiftModel>[];
 
+      final now = DateTime.now();
+
       for (final s in list) {
+        // Only include shifts that have started (current or past), not future
+        if (s.startTime.isAfter(now)) continue;
+
         final key =
             '${s.startTime.millisecondsSinceEpoch}-${s.endTime.millisecondsSinceEpoch}';
 
