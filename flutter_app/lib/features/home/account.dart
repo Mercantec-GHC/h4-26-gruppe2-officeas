@@ -88,6 +88,35 @@ class _AccountPageState extends State<AccountPage> {
     }
   }
 
+  Future<void> _removeProfileImage() async {
+    final authBloc = context.read<AuthBloc>();
+    try {
+      final userRepo = getIt<UserRepository>();
+      final updatedUser = await userRepo.deleteProfileImage();
+
+      if (!mounted) return;
+
+      authBloc.add(UserUpdated(updatedUser));
+      setState(() => _profileImageBytes = null);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile picture removed'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove picture: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _toggleEdit() {
     setState(() => _isEditing = !_isEditing);
   }
@@ -302,10 +331,23 @@ class _AccountPageState extends State<AccountPage> {
             const SizedBox(height: 18),
             _departmentBox(context, user?.departmentName ?? '—'),
             const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: _openCamera,
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Take picture'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _openCamera,
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Take picture'),
+                ),
+                if ((user?.avatarUrl ?? '').isNotEmpty || _profileImageBytes != null) ...[
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: _removeProfileImage,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Remove picture'),
+                  ),
+                ],
+              ],
             ),
           ],
         ),

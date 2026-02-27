@@ -46,6 +46,15 @@ class UserRepository {
     return UserModel.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// Delete the current user's profile image. Returns the updated user (no avatar).
+  Future<UserModel> deleteProfileImage() async {
+    final response = await _dio.delete(
+      '/users/me/profile-image',
+      options: Options(responseType: ResponseType.json),
+    );
+    return UserModel.fromJson(response.data as Map<String, dynamic>);
+  }
+
   /// Build full URL for an avatar or image path returned by the API.
   /// [path] is e.g. "/users/xxx/avatar" or "/tickets/xxx/image".
   static String imageUrl(String path) {

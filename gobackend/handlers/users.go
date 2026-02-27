@@ -564,6 +564,36 @@ func (h Users) ServeProfileImage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteProfileImage godoc
+// @Summary      Delete current user's profile image
+// @Tags         users
+// @Produce      json
+// @Success      200  {object}  models.User
+// @Security     BearerAuth
+// @Router       /users/me/profile-image [delete]
+func (h Users) DeleteProfileImage(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.UploadDir != "" && currentUser.ProfileImagePath != "" {
+		_ = upload.DeleteFile(h.UploadDir, currentUser.ProfileImagePath)
+	}
+	if err := h.DB.Model(&models.User{}).Where("id = ?", currentUser.Id).Update("profile_image_path", "").Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var u models.User
+	if err := h.DB.Preload("Department").First(&u, "id = ?", currentUser.Id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	setUserAvatarURL(&u)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(u)
+}
+
 // Delete godoc
 // @Summary      Delete user by ID
 // @Tags         users
@@ -597,6 +627,7 @@ func (h Users) Delete(w http.ResponseWriter, r *http.Request) {
 // RegisterUsers adds user routes
 func RegisterUsers(router *mux.Router, h Users, prefix string) {
 	router.HandleFunc(prefix+"/me/profile-image", h.UploadProfileImage).Methods("PUT")
+	router.HandleFunc(prefix+"/me/profile-image", h.DeleteProfileImage).Methods("DELETE")
 	router.HandleFunc(prefix+"/me/avatar", h.ServeProfileImage).Methods("GET")
 	router.HandleFunc(prefix+"/{id}/avatar", h.ServeProfileImage).Methods("GET")
 	router.HandleFunc(prefix, h.List).Methods("GET")
