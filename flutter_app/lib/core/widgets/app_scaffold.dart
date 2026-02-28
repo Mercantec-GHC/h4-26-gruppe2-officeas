@@ -3,7 +3,7 @@ import 'app_drawer.dart';
 import 'app_topbar_actions.dart';
 
 /// Shared scaffold for app views: drawer (sidebar), app bar with title and
-/// standard actions (theme, notifications, account, logout), plus optional
+/// standard actions (theme, notifications, account), plus optional
 /// extra actions. Use this so all views share the same top bar and navigation.
 class AppScaffold extends StatefulWidget {
   final Widget title;
@@ -25,7 +25,7 @@ class AppScaffold extends StatefulWidget {
     this.showBackButtonWhenPossible = false,
     this.showAccount = true,
     this.showNotifications = true,
-    this.showLogout = true,
+    this.showLogout = false,
     this.actions,
     this.floatingActionButton,
     this.floatingActionButtonLocation,
