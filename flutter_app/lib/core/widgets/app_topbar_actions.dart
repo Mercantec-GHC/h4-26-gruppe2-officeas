@@ -15,7 +15,7 @@ class AppTopBarActions extends StatefulWidget {
     super.key,
     this.showNotifications = true,
     this.showAccount = true,
-    this.showLogout = true,
+    this.showLogout = false,
   });
 
   @override

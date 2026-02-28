@@ -1,4 +1,5 @@
 # H4 - YourOffice
+
 Office Management System med Flutter frontend og Go backend
 
 ## 🚀 Getting Started
@@ -12,13 +13,21 @@ Office Management System med Flutter frontend og Go backend
 
 1. **Sæt database URL op:**
    - Opret eller opdater `gobackend/.env` med din PostgreSQL connection string:
+
    ```env
    DATABASE_URL=postgres://user:password@host:port/database
    ```
 
 2. **Start alle services:**
+
    ```bash
    docker compose up --build -d
+   ```
+
+   Valgfrit: sæt en anden public port (fx til Dokploy):
+
+   ```bash
+   PUBLIC_PORT=4020 docker compose up --build -d
    ```
 
 3. **Tjek at alt kører:**
@@ -35,11 +44,14 @@ Efter opstart er følgende services tilgængelige:
 - **Go Backend API:** `http://localhost:8080/api/` (gennem nginx)
 - **Swagger UI:** `http://localhost:8080/swagger/` eller `http://localhost:8080/api/swagger/`
 
+> Compose bruger `PUBLIC_PORT` (default `8080`) til nginx mappingen `${PUBLIC_PORT}:80`.
+
 ## 📚 Swagger API Documentation
 
 Swagger UI er tilgængelig på:
 
 **Primary URL:**
+
 ```
 http://localhost:8080/swagger/
 ```
