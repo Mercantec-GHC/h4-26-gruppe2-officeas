@@ -3,6 +3,7 @@ package messaging
 import (
 	"errors"
 	"log"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -27,6 +28,7 @@ var (
 	ErrEmptyMessage    = errors.New("message content must not be empty")
 	ErrMessageNotFound = errors.New("message not found")
 	ErrConvNotFound    = errors.New("conversation not found")
+	ErrForbiddenDelete = errors.New("forbidden: only sender can delete this message")
 )
 
 // Service contains all messaging business logic.
@@ -79,8 +81,8 @@ func (s *Service) SetHub(h *Hub) {
 // CreateConversation
 // ---------------------------------------------------------------------------
 
-// CreateConversation creates a conversation in the given department.
-// All userIDs must belong to that department; the creator must be included.
+// CreateConversation creates a conversation scoped to the creator's department.
+// Users may come from different departments; creator must be included.
 func (s *Service) CreateConversation(creatorID uuid.UUID, departmentID uuid.UUID, userIDs []uuid.UUID, isGroup bool) (*models.ConversationDTO, error) {
 	// Deduplicate user IDs to prevent duplicate membership attempts
 	seen := make(map[uuid.UUID]struct{}, len(userIDs))
@@ -102,13 +104,13 @@ func (s *Service) CreateConversation(creatorID uuid.UUID, departmentID uuid.UUID
 		return nil, errors.New("creator must be included in the member list")
 	}
 
-	// Verify all users belong to the department
+	// Verify all users exist
 	var count int64
 	s.db.Model(&models.User{}).
-		Where("id IN ? AND department_id = ?", userIDs, departmentID).
+		Where("id IN ?", userIDs).
 		Count(&count)
 	if int(count) != len(userIDs) {
-		return nil, ErrWrongDepartment
+		return nil, errors.New("one or more users were not found")
 	}
 
 	// For 1:1 chats, return existing conversation if one already exists.
@@ -413,6 +415,36 @@ func (s *Service) GetUnreadCount(userID uuid.UUID, conversationID uuid.UUID) (in
 	return count, err
 }
 
+// DeleteMessage soft-deletes a message. Only sender or Ledelse may delete.
+func (s *Service) DeleteMessage(userID uuid.UUID, messageID uuid.UUID) error {
+	var msg models.Message
+	if err := s.db.First(&msg, "id = ?", messageID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrMessageNotFound
+		}
+		return err
+	}
+
+	var user models.User
+	if err := s.db.Preload("Department").First(&user, "id = ?", userID).Error; err != nil {
+		return err
+	}
+
+	isLedelse := strings.EqualFold(strings.TrimSpace(user.Department.Name), "Ledelse")
+	if msg.SenderId != userID && !isLedelse {
+		return ErrForbiddenDelete
+	}
+
+	if err := s.db.Where("id = ?", messageID).Delete(&models.Message{}).Error; err != nil {
+		return err
+	}
+
+	log.Printf("[AUDIT] message_soft_deleted | deleted_by=%s message=%s time=%s",
+		userID, messageID, time.Now().UTC().Format(time.RFC3339))
+
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // GetConversations — list conversations for a user
 // ---------------------------------------------------------------------------
@@ -483,14 +515,15 @@ func (s *Service) getMemberIDs(conversationID uuid.UUID) ([]uuid.UUID, error) {
 // conversationToDTO builds a DTO with member info and unread count.
 func (s *Service) conversationToDTO(conv models.Conversation, forUserID uuid.UUID) (*models.ConversationDTO, error) {
 	var members []models.ConversationMember
-	s.db.Preload("User").Where("conversation_id = ?", conv.Id).Find(&members)
+	s.db.Preload("User.Department").Where("conversation_id = ?", conv.Id).Find(&members)
 
 	memberDTOs := make([]models.ConversationMemberDTO, 0, len(members))
 	for _, m := range members {
 		memberDTOs = append(memberDTOs, models.ConversationMemberDTO{
-			UserId:   m.UserId,
-			UserName: m.User.Name,
-			JoinedAt: m.JoinedAt,
+			UserId:         m.UserId,
+			UserName:       m.User.Name,
+			DepartmentName: m.User.Department.Name,
+			JoinedAt:       m.JoinedAt,
 		})
 	}
 

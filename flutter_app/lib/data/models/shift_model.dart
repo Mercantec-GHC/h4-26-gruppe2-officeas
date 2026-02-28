@@ -16,6 +16,7 @@ class ShiftModel {
   final DateTime startTime;
   final DateTime endTime;
   final String? userName;
+  final String? userDepartmentName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -25,6 +26,7 @@ class ShiftModel {
     required this.startTime,
     required this.endTime,
     this.userName,
+    this.userDepartmentName,
     this.createdAt,
     this.updatedAt,
   });
@@ -39,6 +41,7 @@ class ShiftModel {
       startTime: DateTime.parse(json['start_time'] as String),
       endTime: DateTime.parse(json['end_time'] as String),
       userName: json['user']?['name'] as String?,
+        userDepartmentName: json['user']?['department']?['name'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -73,6 +76,7 @@ class ShiftModel {
       startTime: startTime,
       endTime: endTime,
       userName: userName,
+      userDepartmentName: userDepartmentName,
     );
   }
 
@@ -86,12 +90,13 @@ class ShiftModel {
       startTime: entity.startTime,
       endTime: entity.endTime,
       userName: entity.userName,
+      userDepartmentName: entity.userDepartmentName,
     );
   }
 
   @override
   String toString() {
     return 'ShiftModel(id: $id, userId: $userId, startTime: $startTime, '
-        'endTime: $endTime, userName: $userName)';
+        'endTime: $endTime, userName: $userName, userDepartmentName: $userDepartmentName)';
   }
 }

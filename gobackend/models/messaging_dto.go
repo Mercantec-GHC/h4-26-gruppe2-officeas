@@ -22,9 +22,10 @@ type ConversationDTO struct {
 
 // ConversationMemberDTO is the API response for a conversation member.
 type ConversationMemberDTO struct {
-	UserId   uuid.UUID `json:"user_id"`
-	UserName string    `json:"user_name"`
-	JoinedAt time.Time `json:"joined_at"`
+	UserId         uuid.UUID `json:"user_id"`
+	UserName       string    `json:"user_name"`
+	DepartmentName string    `json:"department_name"`
+	JoinedAt       time.Time `json:"joined_at"`
 }
 
 // MessageDTO is the API response for a message (content is decrypted).

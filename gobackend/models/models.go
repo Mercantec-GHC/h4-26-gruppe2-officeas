@@ -85,14 +85,21 @@ type Department struct {
 
 // User represents a user in the system
 type User struct {
-	Id             uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	Name           string    `gorm:"type:varchar(255);not null" json:"name"`
-	Email          string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"email"`
-	PasswordHash   string    `gorm:"type:varchar(255);not null" json:"-"`
-	DepartmentId   uuid.UUID `gorm:"type:uuid;not null" json:"department_id"`
-	FeedbackRating int       `gorm:"default:0" json:"feedback_rating"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Id               uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	Name             string     `gorm:"type:varchar(255);not null" json:"name"`
+	Email            string     `gorm:"type:varchar(255);not null;uniqueIndex" json:"email"`
+	PasswordHash     string     `gorm:"type:varchar(255);not null" json:"-"`
+	DepartmentId     uuid.UUID  `gorm:"type:uuid;not null" json:"department_id"`
+	IsApproved       bool       `gorm:"not null;default:false" json:"is_approved"`
+	ApprovedAt       *time.Time `json:"approved_at"`
+	ApprovedByUserId *uuid.UUID `gorm:"type:uuid" json:"approved_by_user_id"`
+	FeedbackRating    int        `gorm:"default:0" json:"feedback_rating"`
+	ProfileImagePath  string     `gorm:"type:varchar(512)" json:"profile_image_path,omitempty"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+
+	// AvatarURL is computed for API responses when ProfileImagePath is set (gorm:"-" so not stored).
+	AvatarURL string `gorm:"-" json:"avatar_url,omitempty"`
 
 	// Relations
 	Department       Department              `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
@@ -101,9 +108,11 @@ type User struct {
 	Shifts           []Shift                 `gorm:"foreignKey:UserId" json:"shifts,omitempty"`
 	AbsenceRequests  []AbsenceRequest        `gorm:"foreignKey:UserId" json:"absence_requests,omitempty"`
 	ReviewedAbsences []AbsenceRequest        `gorm:"foreignKey:ReviewedByUserId" json:"reviewed_absences,omitempty"`
+	ApprovedUsers    []User                  `gorm:"foreignKey:ApprovedByUserId" json:"approved_users,omitempty"`
 	TicketComments   []TicketComment         `gorm:"foreignKey:UserId" json:"ticket_comments,omitempty"`
 	AbsenceComments  []AbsenceRequestComment `gorm:"foreignKey:UserId" json:"absence_comments,omitempty"`
 	Notifications    []Notification          `gorm:"foreignKey:UserId" json:"notifications,omitempty"`
+	ApprovedByUser   *User                   `gorm:"foreignKey:ApprovedByUserId" json:"approved_by_user,omitempty"`
 }
 
 // Ticket represents a support ticket
@@ -117,6 +126,7 @@ type Ticket struct {
 	CreatedAt        time.Time    `json:"created_at"`
 	UpdatedAt        time.Time    `json:"updated_at"`
 	ResolvedAt       *time.Time   `json:"resolved_at"`
+	ImagePath        string       `gorm:"type:varchar(512)" json:"image_path,omitempty"`
 
 	// Relations
 	CreatedByUser  User            `gorm:"foreignKey:CreatedByUserId" json:"created_by_user,omitempty"`
@@ -138,15 +148,18 @@ type TicketComment struct {
 	User   User   `gorm:"foreignKey:UserId" json:"user,omitempty"`
 }
 
-// Feedback represents feedback from users
+// Feedback represents feedback about a department for a specific shift (the time period of the experience).
+// User's overall rating is the average of all feedback ratings for shifts they were on.
 type Feedback struct {
-	Id           uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
-	DepartmentId uuid.UUID `gorm:"type:uuid;not null" json:"department_id"`
-	Rating       int       `gorm:"not null" json:"rating"`
-	CreatedAt    time.Time `json:"created_at"`
+	Id           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
+	DepartmentId uuid.UUID  `gorm:"type:uuid;not null" json:"department_id"`
+	ShiftId      *uuid.UUID `gorm:"type:uuid" json:"shift_id,omitempty"`
+	Rating       int        `gorm:"not null" json:"rating"`
+	Message      *string    `gorm:"type:text" json:"message,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 
-	// Relations
 	Department Department `gorm:"foreignKey:DepartmentId" json:"department,omitempty"`
+	Shift      *Shift     `gorm:"foreignKey:ShiftId" json:"shift,omitempty"`
 }
 
 // Shift represents a user's work shift

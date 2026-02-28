@@ -203,9 +203,9 @@ func (h AbsenceRequestComments) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterAbsenceRequestComments adds absence request comment routes
 func RegisterAbsenceRequestComments(router *mux.Router, h AbsenceRequestComments, absenceRequestsPrefix, commentsPrefix string) {
-	router.HandleFunc(absenceRequestsPrefix+"/{absenceRequestId}/comments", h.ListByAbsenceRequest).Methods("GET")
-	router.HandleFunc(absenceRequestsPrefix+"/{absenceRequestId}/comments", h.CreateOnAbsenceRequest).Methods("POST")
-	router.HandleFunc(commentsPrefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(commentsPrefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(commentsPrefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(absenceRequestsPrefix+"/{absenceRequestId}/comments", chainWithMiddlewares(h.ListByAbsenceRequest, RequirePermission(AbsenceRequestCreate))).Methods("GET")
+	router.Handle(absenceRequestsPrefix+"/{absenceRequestId}/comments", chainWithMiddlewares(h.CreateOnAbsenceRequest, RequirePermission(AbsenceRequestCreate))).Methods("POST")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.GetByID, RequirePermission(AbsenceRequestCreate))).Methods("GET")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.Update, RequirePermission(AbsenceRequestCreate))).Methods("PUT")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(AbsenceRequestCreate))).Methods("DELETE")
 }

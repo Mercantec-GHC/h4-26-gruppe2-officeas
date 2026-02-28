@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/colors.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
 import '../bloc/messaging_event.dart';
 import '../bloc/messaging_state.dart';
-import 'chat_page.dart';
-import 'new_conversation_page.dart';
 
 /// Page that displays the list of conversations.
 class ConversationsPage extends StatefulWidget {
@@ -26,12 +25,8 @@ class _ConversationsPageState extends State<ConversationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Beskeder'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
+    return AppScaffold(
+      title: const Text('Messages'),
       body: BlocBuilder<MessagingBloc, MessagingState>(
         buildWhen: (prev, curr) =>
             curr is ConversationsLoading ||
@@ -60,21 +55,12 @@ class _ConversationsPageState extends State<ConversationsPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BlocProvider.value(
-                value: context.read<MessagingBloc>(),
-                child: const NewConversationPage(),
-              ),
-            ),
-          );
+          await context.push('/messages/new');
           if (context.mounted) {
             context.read<MessagingBloc>().add(LoadConversations());
           }
         },
-        backgroundColor: AppColors.primary,
-        child: const Icon(Icons.edit, color: Colors.white),
+        child: const Icon(Icons.edit),
       ),
     );
   }
@@ -124,20 +110,24 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = conversation.displayName(currentUserId);
+    final scheme = Theme.of(context).colorScheme;
+    final subtitleColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
+    final name = conversation.displayNameWithDepartment(currentUserId);
     final preview = conversation.lastMessagePreview.isEmpty
-        ? 'Ingen beskeder endnu'
+        ? 'No messages yet'
         : conversation.lastMessagePreview;
     final time = _formatTime(conversation.lastMessageAt);
     final unread = conversation.unreadCount;
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: scheme.primary,
         child: Text(
           name.isNotEmpty ? name[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: scheme.onPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -153,7 +143,7 @@ class _ConversationTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: AppColors.subtitle,
+          color: subtitleColor,
           fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
         ),
       ),
@@ -165,7 +155,7 @@ class _ConversationTile extends StatelessWidget {
             time,
             style: TextStyle(
               fontSize: 12,
-              color: unread > 0 ? AppColors.primary : AppColors.subtitle,
+              color: unread > 0 ? scheme.primary : subtitleColor,
             ),
           ),
           if (unread > 0) ...[
@@ -173,13 +163,13 @@ class _ConversationTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: scheme.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 unread > 99 ? '99+' : unread.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: scheme.onPrimary,
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                 ),
@@ -189,14 +179,9 @@ class _ConversationTile extends StatelessWidget {
         ],
       ),
       onTap: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider.value(
-              value: context.read<MessagingBloc>(),
-              child: ChatPage(conversation: conversation),
-            ),
-          ),
+        await context.push(
+          '/messages/chat/${conversation.id}',
+          extra: conversation,
         );
         // Refresh conversations after returning from chat
         // (state was MessagesLoaded, which buildWhen ignores).
@@ -211,7 +196,7 @@ class _ConversationTile extends StatelessWidget {
     if (dt == null) return '';
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Nu';
+    if (diff.inMinutes < 1) return 'Now';
     if (diff.inHours < 1) return '${diff.inMinutes} min';
     if (diff.inDays < 1) {
       return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
@@ -228,15 +213,18 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final subtitleColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 64, color: AppColors.subtitle),
-          SizedBox(height: 16),
+          Icon(Icons.chat_bubble_outline, size: 64, color: subtitleColor),
+          const SizedBox(height: 16),
           Text(
-            'Ingen samtaler endnu',
-            style: TextStyle(fontSize: 16, color: AppColors.subtitle),
+            'No conversations yet',
+            style: TextStyle(fontSize: 16, color: subtitleColor),
           ),
         ],
       ),
@@ -252,18 +240,20 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = Theme.of(context).textTheme.bodyMedium?.color;
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            Icon(Icons.error_outline, size: 48, color: scheme.error),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.text),
+              style: TextStyle(color: textColor),
             ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onRetry, child: const Text('Prøv igen')),

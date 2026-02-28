@@ -33,7 +33,7 @@ func runMigrations(db *gorm.DB) error {
 	// AutoMigrate will create tables if they don't exist, or update schema if models changed
 	// It will NOT drop existing tables or data
 
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.Department{},
 		&models.User{},
 		&models.Ticket{},
@@ -48,7 +48,26 @@ func runMigrations(db *gorm.DB) error {
 		&models.ConversationMember{},
 		&models.Message{},
 		&models.DeviceToken{},
-	)
+	); err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		ALTER TABLE users
+		ALTER COLUMN is_approved SET DEFAULT FALSE
+	`).Error; err != nil {
+		return err
+	}
+
+	if err := db.Exec(`
+		UPDATE users
+		SET is_approved = FALSE
+		WHERE is_approved IS NULL
+	`).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // allowedOrigins defines the production origins permitted for CORS.
@@ -121,28 +140,37 @@ func main() {
 		http.ServeFile(w, r, "./docs/swagger.json")
 	}).Methods("GET")
 
-	// Feedback CRUD
-	handlers.RegisterFeedback(router, handlers.Feedback{DB: db}, "/feedback")
-
-	// Users CRUD
-	handlers.RegisterUsers(router, handlers.Users{DB: db}, "/users")
-	// Auth routes with rate limiting
+	// Auth routes with rate limiting (nginx strips /api so backend receives /auth/...)
 	authRouter := router.PathPrefix("/auth").Subrouter()
 	authRouter.Use(rateLimiter.RateLimitMiddleware)
 	handlers.RegisterAuth(authRouter, handlers.Auth{DB: db}, "")
 
-	// Protected routes (require authentication)
+	// Protected routes (no /api prefix; nginx strips /api so backend receives /departments, /users, etc.)
 	protectedRouter := router.PathPrefix("").Subrouter()
 	protectedRouter.Use(handlers.AuthMiddleware)
+	handlers.SetAuthorizationService(db)
+
+	// Upload directory for profile and ticket images (default ./uploads)
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
 
 	// Departments (protected)
-	handlers.RegisterDepartments(protectedRouter, handlers.Departments{DB: db}, "/departments")
+	// Feedback CRUD -> POST /feedback (auth via middleware on same router)
+	handlers.RegisterFeedback(protectedRouter, handlers.Feedback{DB: db}, "/feedback")
 
-	// Users CRUD (protected)
-	handlers.RegisterUsers(protectedRouter, handlers.Users{DB: db}, "/users")
+	// GET /departments is public (for registration form); other department routes are protected
+	deptHandler := handlers.Departments{DB: db}
+	publicRouter.HandleFunc("/departments", deptHandler.List).Methods("GET")
+	handlers.RegisterDepartmentsProtected(protectedRouter, deptHandler, "/departments")
 
-	// Tickets CRUD (protected)
-	handlers.RegisterTickets(protectedRouter, handlers.Tickets{DB: db}, "/tickets")
+	// Users CRUD (protected) + profile image upload/serve
+	handlers.RegisterUsers(protectedRouter, handlers.Users{DB: db, UploadDir: uploadDir}, "/users")
+
+	// Tickets CRUD (protected) + ticket image upload/serve
+	handlers.RegisterTickets(protectedRouter, handlers.Tickets{DB: db, UploadDir: uploadDir}, "/tickets")
 
 	// Shifts CRUD (protected)
 	handlers.RegisterShifts(protectedRouter, handlers.Shifts{DB: db}, "/shifts")

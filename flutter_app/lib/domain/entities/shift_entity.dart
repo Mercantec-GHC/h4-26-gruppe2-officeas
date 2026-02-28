@@ -10,6 +10,7 @@ class ShiftEntity extends Equatable {
   final DateTime startTime;
   final DateTime endTime;
   final String? userName; // Optional: user name from relationship
+  final String? userDepartmentName;
 
   const ShiftEntity({
     required this.id,
@@ -17,6 +18,7 @@ class ShiftEntity extends Equatable {
     required this.startTime,
     required this.endTime,
     this.userName,
+    this.userDepartmentName,
   });
 
   /// Convenience getter for formateret starttidspunkt
@@ -63,11 +65,18 @@ class ShiftEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, userId, startTime, endTime, userName];
+  List<Object?> get props => [
+    id,
+    userId,
+    startTime,
+    endTime,
+    userName,
+    userDepartmentName,
+  ];
 
   @override
   String toString() {
     return 'ShiftEntity(id: $id, userId: $userId, startTime: $startTime, '
-        'endTime: $endTime, userName: $userName)';
+        'endTime: $endTime, userName: $userName, userDepartmentName: $userDepartmentName)';
   }
 }

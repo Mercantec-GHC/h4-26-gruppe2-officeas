@@ -207,9 +207,9 @@ func (h TicketComments) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterTicketComments adds ticket comment routes (nested under tickets + standalone by id)
 func RegisterTicketComments(router *mux.Router, h TicketComments, ticketsPrefix, commentsPrefix string) {
-	router.HandleFunc(ticketsPrefix+"/{ticketId}/comments", h.ListByTicket).Methods("GET")
-	router.HandleFunc(ticketsPrefix+"/{ticketId}/comments", h.CreateOnTicket).Methods("POST")
-	router.HandleFunc(commentsPrefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(commentsPrefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(commentsPrefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(ticketsPrefix+"/{ticketId}/comments", chainWithMiddlewares(h.ListByTicket, RequirePermission(TicketView))).Methods("GET")
+	router.Handle(ticketsPrefix+"/{ticketId}/comments", chainWithMiddlewares(h.CreateOnTicket, RequirePermission(TicketView))).Methods("POST")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.GetByID, RequirePermission(TicketView))).Methods("GET")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.Update, RequirePermission(TicketView))).Methods("PUT")
+	router.Handle(commentsPrefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(TicketView))).Methods("DELETE")
 }

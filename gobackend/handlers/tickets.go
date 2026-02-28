@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
 	"time"
 
+	"stuff/internal/upload"
 	"stuff/models"
 
 	"github.com/google/uuid"
@@ -12,9 +15,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// Tickets holds DB for ticket handlers
+// Tickets holds DB and upload dir for ticket handlers
 type Tickets struct {
-	DB *gorm.DB
+	DB        *gorm.DB
+	UploadDir string
 }
 
 // List godoc
@@ -26,9 +30,20 @@ type Tickets struct {
 // @Security     BearerAuth
 // @Router       /tickets [get]
 func (h Tickets) List(w http.ResponseWriter, r *http.Request) {
-	var list []models.Ticket
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").Find(&list).Error; err != nil {
+	var list []models.Ticket
+	query := h.DB.WithContext(r.Context()).Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments")
+
+	if !isLedelse(currentUser) && !isITSupport(currentUser) {
+		query = query.Where("created_by_user_id = ? OR assigned_to_user_id = ?", currentUser.Id, currentUser.Id)
+	}
+
+	if err := query.Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -82,6 +97,12 @@ func (h Tickets) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /tickets [post]
 func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var t models.Ticket
 
 	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
@@ -89,13 +110,19 @@ func (h Tickets) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if t.AssignedToUserId != nil && !HasPermission(currentUser, TicketAssign) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	t.Id = uuid.New()
+	t.CreatedByUserId = currentUser.Id
 
 	if t.Status == "" {
 		t.Status = models.TicketStatusOpen
 	}
 
-	if err := h.DB.Create(&t).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Create(&t).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -137,8 +164,14 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var existing models.Ticket
-	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).First(&existing, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "ticket not found", http.StatusNotFound)
 			return
@@ -156,11 +189,57 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 
 	t.Id = id
 
+	isCreator := existing.CreatedByUserId == currentUser.Id
+	isAssignee := existing.AssignedToUserId != nil && *existing.AssignedToUserId == currentUser.Id
+	canManage := isLedelse(currentUser) || isITSupport(currentUser)
+
+	if !canManage && !isCreator && !isAssignee {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if !canManage {
+		if t.AssignedToUserId != nil {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		if isAssignee && !isCreator {
+			if t.Status != models.TicketStatusResolved && t.Status != models.TicketStatusClosed {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			if t.Title != "" || t.Description != "" {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
+	// Build updates from existing; only overwrite with body values when present (avoid writing zero values)
 	updates := map[string]interface{}{
-		"title":               t.Title,
-		"description":         t.Description,
-		"status":              t.Status,
-		"assigned_to_user_id": t.AssignedToUserId,
+		"title":               existing.Title,
+		"description":         existing.Description,
+		"status":              existing.Status,
+		"assigned_to_user_id": existing.AssignedToUserId,
+	}
+
+	if canManage || isCreator {
+		if t.Title != "" {
+			updates["title"] = t.Title
+		}
+		
+		if t.Description != "" {
+			updates["description"] = t.Description
+		}
+	}
+
+	if canManage {
+		updates["assigned_to_user_id"] = t.AssignedToUserId
+	}
+	if t.Status != "" {
+		updates["status"] = t.Status
 	}
 
 	if t.Status == models.TicketStatusResolved || t.Status == models.TicketStatusClosed {
@@ -168,7 +247,7 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		updates["resolved_at"] = &now
 	}
 
-	result := h.DB.Model(&models.Ticket{}).Where("id = ?", id).Updates(updates)
+	result := h.DB.WithContext(r.Context()).Model(&models.Ticket{}).Where("id = ?", id).Updates(updates)
 
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
@@ -180,7 +259,7 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id)
+	h.DB.WithContext(r.Context()).Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id)
 
 	relatedType := "ticket"
 	if t.AssignedToUserId != nil {
@@ -239,6 +318,23 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !isLedelse(currentUser) && !isITSupport(currentUser) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Delete comments first (no CASCADE on the model), then the ticket
+	if err := h.DB.Where("ticket_id = ?", id).Delete(&models.TicketComment{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	result := h.DB.Delete(&models.Ticket{}, "id = ?", id)
 
 	if result.Error != nil {
@@ -254,11 +350,114 @@ func (h Tickets) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// RegisterTickets adds ticket routes
+// UploadTicketImage godoc
+// @Summary      Upload ticket problem image
+// @Tags         tickets
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id     path      string  true  "Ticket ID"
+// @Param        image  formData  file   true  "Problem image"
+// @Success      200  {object}  models.Ticket
+// @Failure      400  {string}  string  "Bad request"
+// @Security     BearerAuth
+// @Router       /tickets/{id}/image [put]
+func (h Tickets) UploadTicketImage(w http.ResponseWriter, r *http.Request) {
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+		return
+	}
+	var t models.Ticket
+	if err := h.DB.First(&t, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "ticket not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	file, _, ext, err := upload.ParseImage(r, upload.FormFieldImage)
+	if err != nil {
+		if errors.Is(err, upload.ErrTooLarge) || errors.Is(err, upload.ErrInvalidType) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	relPath := "tickets/" + t.Id.String() + ext
+	if t.ImagePath != "" {
+		_ = upload.DeleteFile(h.UploadDir, t.ImagePath)
+	}
+	if err := upload.SaveFile(h.UploadDir, relPath, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.DB.Model(&models.Ticket{}).Where("id = ?", id).Update("image_path", relPath).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := h.DB.Preload("CreatedByUser").Preload("AssignedToUser").Preload("Comments").First(&t, "id = ?", id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(t)
+}
+
+// ServeTicketImage godoc
+// @Summary      Serve ticket problem image
+// @Tags         tickets
+// @Produce      image/*
+// @Param        id   path      string  true  "Ticket ID"
+// @Success      200  "Image bytes"
+// @Failure      404  {string}  string  "not found"
+// @Security     BearerAuth
+// @Router       /tickets/{id}/image [get]
+func (h Tickets) ServeTicketImage(w http.ResponseWriter, r *http.Request) {
+	id, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+	if h.UploadDir == "" {
+		http.Error(w, "upload not configured", http.StatusInternalServerError)
+		return
+	}
+	var t models.Ticket
+	if err := h.DB.First(&t, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "ticket not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if t.ImagePath == "" {
+		http.Error(w, "no ticket image", http.StatusNotFound)
+		return
+	}
+	if err := upload.ServeFile(w, h.UploadDir, t.ImagePath); err != nil {
+		if errors.Is(err, upload.ErrPathEscape) || errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// RegisterTickets adds ticket routes. More specific /{id}/image routes are registered before /{id} so they match first.
 func RegisterTickets(router *mux.Router, h Tickets, prefix string) {
-	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix, h.Create).Methods("POST")
-	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(TicketView))).Methods("GET")
+	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(TicketCreate))).Methods("POST")
+	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.ServeTicketImage, RequireTicketAccess())).Methods("GET")
+	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.UploadTicketImage, RequireTicketAccess())).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.GetByID, RequireTicketAccess())).Methods("GET")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Update, RequireTicketAccess())).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequireTicketAccess())).Methods("DELETE")
 }

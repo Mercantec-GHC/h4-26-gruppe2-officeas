@@ -27,6 +27,9 @@ FROM nginx:alpine
 # Copy the built web app
 COPY --from=build-env /app/build/web /usr/share/nginx/html
 
+# SPA routing: serve index.html for unknown paths (refresh / deep links)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # Expose port 80
 EXPOSE 80
 

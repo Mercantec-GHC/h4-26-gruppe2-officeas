@@ -76,6 +76,23 @@ class MessagingRemoteDataSource {
     return MessageModel.fromJson(response.data);
   }
 
+  /// POST /messages/multi
+  /// Creates/reuses a conversation and sends one message to multiple users.
+  Future<ConversationModel> sendMessageToUsers({
+    required List<String> userIds,
+    required String content,
+    bool isGroup = true,
+  }) async {
+    final response = await _dio.post(
+      '/messages/multi',
+      data: {'user_ids': userIds, 'content': content, 'is_group': isGroup},
+    );
+
+    final conversationJson =
+        response.data['conversation'] as Map<String, dynamic>;
+    return ConversationModel.fromJson(conversationJson);
+  }
+
   /// PUT /messages/{id}/read
   Future<void> markAsRead(String messageId) async {
     await _dio.put('/messages/$messageId/read');

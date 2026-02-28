@@ -22,7 +22,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<GitHubSignInRequested>(_onGitHubSignInRequested);
     on<LogoutRequested>(_onLogoutRequested);
     on<CheckAuthStatus>(_onCheckAuthStatus);
-    
+    on<UserUpdated>(_onUserUpdated);
+
     // Check auth status on initialization
     _checkAuthStatusOnInit();
   }
@@ -32,13 +33,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final isLoggedIn = await _authService.isLoggedIn();
       if (isLoggedIn) {
         final token = await _authService.getToken();
-        if (token != null) {
+        final storedUser = await _authService.getStoredUser();
+        if (token != null && storedUser != null) {
           _currentToken = token;
+          _currentUser = storedUser;
           add(CheckAuthStatus());
         }
       }
     } catch (e) {
-      // Silent fail on init
       debugPrint('Auth status check failed on init: $e');
     }
   }
@@ -64,12 +66,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.register(
+      final result = await _authService.register(
         name: event.name,
         email: event.email,
         password: event.password,
         departmentId: event.departmentId,
       );
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));
@@ -84,7 +100,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.signInWithGoogle();
+      final result = await _authService.signInWithGoogle();
+
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));
@@ -99,7 +130,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final response = await _authService.signInWithGitHub();
+      final result = await _authService.signInWithGitHub();
+
+      if (result.isPendingApproval) {
+        _currentUser = null;
+        _currentToken = null;
+        emit(
+          AuthPendingApproval(
+            message:
+                result.pending?.message ??
+                'Your account is pending HR/Ledelse approval.',
+          ),
+        );
+        return;
+      }
+
+      final response = result.auth!;
       _currentUser = response.user;
       _currentToken = response.token;
       emit(Authenticated(user: response.user, token: response.token));
@@ -127,9 +173,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (isLoggedIn) {
         final token = await _authService.getToken();
         if (token != null) {
-          // If we have a token, mark as authenticated
-          // Note: User data could be fetched from backend here if needed
-          emit(Authenticated(user: _currentUser ?? UserModel.empty(), token: token));
+          // Use in-memory user if set (from init), otherwise try loading from storage
+          UserModel? user = _currentUser;
+          if (user == null) {
+            user = await _authService.getStoredUser();
+            if (user != null) _currentUser = user;
+          }
+          if (user != null) {
+            emit(Authenticated(user: user, token: token));
+          } else {
+            emit(Unauthenticated());
+          }
         } else {
           emit(Unauthenticated());
         }
@@ -138,6 +192,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     } catch (e) {
       emit(Unauthenticated());
+    }
+  }
+
+  void _onUserUpdated(UserUpdated event, Emitter<AuthState> emit) {
+    _currentUser = event.user;
+    if (_currentToken != null) {
+      emit(Authenticated(user: event.user, token: _currentToken!));
     }
   }
 }

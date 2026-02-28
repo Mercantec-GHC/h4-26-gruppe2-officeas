@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/colors.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
@@ -50,20 +50,18 @@ class _ChatPageState extends State<ChatPage> {
     final currentUserId =
         context.read<AuthBloc>().currentUser?.id.toString() ?? '';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.conversation.displayName(currentUserId)),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
+    return AppScaffold(
+      title: Text(widget.conversation.displayNameWithDepartment(currentUserId)),
+      showBackButtonWhenPossible: true,
       body: BlocListener<MessagingBloc, MessagingState>(
         listenWhen: (prev, curr) => curr is MessagingError,
         listener: (context, state) {
           if (state is MessagingError) {
+            final scheme = Theme.of(context).colorScheme;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: AppColors.error,
+                backgroundColor: scheme.error,
                 duration: const Duration(seconds: 3),
               ),
             );
@@ -81,10 +79,13 @@ class _ChatPageState extends State<ChatPage> {
                   }
                   if (state is MessagesLoaded) {
                     if (state.messages.isEmpty) {
-                      return const Center(
+                      return Center(
                         child: Text(
                           'Skriv den første besked!',
-                          style: TextStyle(color: AppColors.subtitle),
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.72),
+                          ),
                         ),
                       );
                     }
@@ -167,6 +168,10 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final subtitleColor = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -176,7 +181,7 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : AppColors.card,
+          color: isMe ? scheme.primary : scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -204,14 +209,14 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                   ),
                 ),
               ),
             Text(
               message.content,
               style: TextStyle(
-                color: isMe ? Colors.white : AppColors.text,
+                color: isMe ? scheme.onPrimary : scheme.onSurface,
                 fontSize: 15,
               ),
             ),
@@ -224,8 +229,8 @@ class _MessageBubble extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isMe
-                        ? Colors.white.withValues(alpha: 0.7)
-                        : AppColors.subtitle,
+                        ? scheme.onPrimary.withValues(alpha: 0.7)
+                        : subtitleColor,
                   ),
                 ),
                 if (isMe) ...[
@@ -233,7 +238,7 @@ class _MessageBubble extends StatelessWidget {
                   Icon(
                     message.isRead ? Icons.done_all : Icons.done,
                     size: 14,
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: scheme.onPrimary.withValues(alpha: 0.7),
                   ),
                 ],
               ],
@@ -259,6 +264,7 @@ class _MessageInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       padding: EdgeInsets.only(
         left: 12,
@@ -267,7 +273,7 @@ class _MessageInput extends StatelessWidget {
         bottom: MediaQuery.of(context).padding.bottom + 8,
       ),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: scheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -294,7 +300,7 @@ class _MessageInput extends StatelessWidget {
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: scheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -306,7 +312,7 @@ class _MessageInput extends StatelessWidget {
           IconButton(
             onPressed: onSend,
             icon: const Icon(Icons.send_rounded),
-            color: AppColors.primary,
+            color: scheme.primary,
           ),
         ],
       ),

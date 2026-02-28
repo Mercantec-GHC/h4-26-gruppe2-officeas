@@ -256,14 +256,14 @@ class ApiClient {
 
       case DioExceptionType.connectionError:
         return ApiException.network(
-          'Ingen internetforbindelse - tjek din netværksforbindelse',
+          'No internet connection - check your network connection',
         );
 
       case DioExceptionType.badResponse:
         return _mapError(error.response!);
 
       case DioExceptionType.cancel:
-        return ApiException.unknown('Request blev annulleret');
+        return ApiException.unknown('Request was cancelled');
 
       case DioExceptionType.unknown:
         return ApiException.network(

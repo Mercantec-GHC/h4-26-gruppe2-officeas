@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/colors.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
+import '../../../data/models/messaging_models.dart';
 import '../../../data/models/user_model.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
 import '../bloc/messaging_event.dart';
 import '../bloc/messaging_state.dart';
-import 'chat_page.dart';
 
 /// Page for searching users and starting a new conversation.
 class NewConversationPage extends StatefulWidget {
@@ -19,9 +20,12 @@ class NewConversationPage extends StatefulWidget {
 
 class _NewConversationPageState extends State<NewConversationPage> {
   final _searchController = TextEditingController();
+  final _messageController = TextEditingController();
   List<UserModel> _allUsers = [];
   List<UserModel> _filteredUsers = [];
+  final Set<String> _selectedUserIds = <String>{};
   bool _isLoading = true;
+  bool _isSubmitting = false;
   String? _error;
 
   @override
@@ -33,11 +37,14 @@ class _NewConversationPageState extends State<NewConversationPage> {
   Future<void> _loadUsers() async {
     try {
       final dataSource = MessagingRemoteDataSource();
+
+      // Capture context-dependent values before the async gap
+      final currentUserId =
+          context.read<AuthBloc>().currentUser?.id.toString() ?? '';
+
       final users = await dataSource.getUsers();
 
       // Exclude the current user from the list.
-      final currentUserId =
-          context.read<AuthBloc>().currentUser?.id.toString() ?? '';
       final filtered = users.where((u) => u.id != currentUserId).toList();
 
       if (mounted) {
@@ -50,7 +57,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Kunne ikke hente brugere. Prøv igen.';
+          _error = 'Could not fetch users. Try again.';
           _isLoading = false;
         });
       }
@@ -62,65 +69,109 @@ class _NewConversationPageState extends State<NewConversationPage> {
     setState(() {
       _filteredUsers = _allUsers.where((u) {
         return u.name.toLowerCase().contains(lower) ||
-            u.email.toLowerCase().contains(lower);
+            u.email.toLowerCase().contains(lower) ||
+            (u.departmentName ?? '').toLowerCase().contains(lower) ||
+            (u.departmentId ?? '').toLowerCase().contains(lower);
       }).toList();
     });
   }
 
   Future<void> _startConversation(UserModel user) async {
+    _toggleUserSelection(user.id);
+  }
+
+  void _toggleUserSelection(String userId) {
+    setState(() {
+      if (_selectedUserIds.contains(userId)) {
+        _selectedUserIds.remove(userId);
+      } else {
+        _selectedUserIds.add(userId);
+      }
+    });
+  }
+
+  Future<void> _createOrSendToSelection() async {
+    if (_selectedUserIds.isEmpty || _isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
     final bloc = context.read<MessagingBloc>();
+    final dataSource = MessagingRemoteDataSource();
     final currentUserId =
         context.read<AuthBloc>().currentUser?.id.toString() ?? '';
+    final selected = _selectedUserIds.toList();
+    final isGroup = selected.length > 1;
+    final firstMessage = _messageController.text.trim();
 
-    // The backend will return the existing 1:1 conversation if one exists,
-    // or create a new one. Either way we get a ConversationModel back.
-    bloc.add(
-      CreateConversation(userIds: [currentUserId, user.id], isGroup: false),
-    );
-
-    // Wait for the ConversationsLoaded state which contains the conversation.
-    final state = await bloc.stream.firstWhere(
-      (s) => s is ConversationsLoaded || s is MessagingError,
-    );
-
-    if (!mounted) return;
-
-    if (state is ConversationsLoaded && state.conversations.isNotEmpty) {
-      // Find the conversation that has this user as a member.
-      final conv = state.conversations.firstWhere(
-        (c) => c.members.any((m) => m.userId == user.id),
-        orElse: () => state.conversations.first,
-      );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BlocProvider.value(
-            value: bloc,
-            child: ChatPage(conversation: conv),
+    try {
+      ConversationModel conv;
+      if (firstMessage.isNotEmpty) {
+        conv = await dataSource.sendMessageToUsers(
+          userIds: selected,
+          content: firstMessage,
+          isGroup: isGroup,
+        );
+      } else {
+        bloc.add(
+          CreateConversation(
+            userIds: [currentUserId, ...selected],
+            isGroup: isGroup,
           ),
-        ),
-      );
-    } else if (state is MessagingError) {
+        );
+
+        final state = await bloc.stream.firstWhere(
+          (s) => s is ConversationsLoaded || s is MessagingError,
+        );
+
+        if (state is MessagingError) {
+          throw Exception(state.message);
+        }
+
+        final loaded = state as ConversationsLoaded;
+        conv = loaded.conversations.firstWhere(
+          (c) => selected.every((id) => c.members.any((m) => m.userId == id)),
+          orElse: () => loaded.conversations.first,
+        );
+      }
+
+      if (!mounted) return;
+
+      context.go('/messages/chat/${conv.id}', extra: conv);
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(state.message)));
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      setState(() => _isSubmitting = false);
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ny besked'),
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
+    final appBarForeground =
+        Theme.of(context).appBarTheme.foregroundColor ??
+        Theme.of(context).colorScheme.onSurface;
+    return AppScaffold(
+      title: const Text('New conversation'),
+      showBackButtonWhenPossible: true,
+      actions: [
+        TextButton(
+          onPressed: _selectedUserIds.isEmpty || _isSubmitting
+              ? null
+              : _createOrSendToSelection,
+          child: Text(
+            _isSubmitting ? 'SENDING...' : 'NEXT',
+            style: TextStyle(color: appBarForeground),
+          ),
+        ),
+      ],
       body: Column(
         children: [
           // Search bar
@@ -130,14 +181,16 @@ class _NewConversationPageState extends State<NewConversationPage> {
               controller: _searchController,
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Søg efter navn eller e-mail...',
+                hintText: 'Search by name or email...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 10,
@@ -145,6 +198,35 @@ class _NewConversationPageState extends State<NewConversationPage> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: _messageController,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Optional: write first message to all selected users',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_selectedUserIds.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_selectedUserIds.length} selected',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
           // Results
           Expanded(child: _buildBody()),
         ],
@@ -161,9 +243,18 @@ class _NewConversationPageState extends State<NewConversationPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 16),
-            Text(_error!, style: const TextStyle(color: AppColors.text)),
+            Text(
+              _error!,
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
@@ -173,7 +264,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
                 });
                 _loadUsers();
               },
-              child: const Text('Prøv igen'),
+              child: const Text('Try again'),
             ),
           ],
         ),
@@ -183,9 +274,13 @@ class _NewConversationPageState extends State<NewConversationPage> {
       return Center(
         child: Text(
           _searchController.text.isEmpty
-              ? 'Ingen brugere fundet'
-              : 'Ingen resultater for "${_searchController.text}"',
-          style: const TextStyle(color: AppColors.subtitle),
+              ? 'No users found'
+              : 'No results for "${_searchController.text}"',
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+          ),
         ),
       );
     }
@@ -196,7 +291,11 @@ class _NewConversationPageState extends State<NewConversationPage> {
           const Divider(height: 1, indent: 72, endIndent: 16),
       itemBuilder: (context, index) {
         final user = _filteredUsers[index];
-        return _UserTile(user: user, onTap: () => _startConversation(user));
+        return _UserTile(
+          user: user,
+          selected: _selectedUserIds.contains(user.id),
+          onTap: () => _startConversation(user),
+        );
       },
     );
   }
@@ -204,19 +303,29 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
 class _UserTile extends StatelessWidget {
   final UserModel user;
+  final bool selected;
   final VoidCallback onTap;
 
-  const _UserTile({required this.user, required this.onTap});
+  const _UserTile({
+    required this.user,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final departmentLabel = user.departmentName?.trim().isNotEmpty == true
+        ? user.departmentName!.trim()
+        : (user.departmentId?.trim().isNotEmpty == true
+              ? 'Dept ID: ${user.departmentId!.trim()}'
+              : 'No department');
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         child: Text(
           user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -226,13 +335,25 @@ class _UserTile extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
-        user.email,
-        style: const TextStyle(color: AppColors.subtitle, fontSize: 13),
+        '${user.email}\n$departmentLabel',
+        style: TextStyle(
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+          fontSize: 13,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
-      trailing: const Icon(
-        Icons.chat_bubble_outline,
-        color: AppColors.primary,
-        size: 20,
+      isThreeLine: true,
+      trailing: Icon(
+        selected ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(
+                context,
+              ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
+        size: 22,
       ),
       onTap: onTap,
     );

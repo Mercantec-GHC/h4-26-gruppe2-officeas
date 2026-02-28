@@ -57,6 +57,19 @@ class ConversationModel {
     return 'Conversation';
   }
 
+  /// Returns a display name for the conversation with department attached.
+  /// For 1:1 chats: "Name (Department)" when department is available.
+  String displayNameWithDepartment(String currentUserId) {
+    if (isGroup) return 'Group (${members.length})';
+    final other = members.where((m) => m.userId != currentUserId);
+    if (other.isEmpty) return 'Conversation';
+
+    final member = other.first;
+    final dept = member.departmentName.trim();
+    if (dept.isEmpty) return member.userName;
+    return '${member.userName} ($dept)';
+  }
+
   ConversationModel copyWith({
     int? unreadCount,
     DateTime? lastMessageAt,
@@ -79,18 +92,43 @@ class ConversationModel {
 class ConversationMemberModel {
   final String userId;
   final String userName;
+  final String departmentName;
   final DateTime joinedAt;
 
   const ConversationMemberModel({
     required this.userId,
     required this.userName,
+    required this.departmentName,
     required this.joinedAt,
   });
 
   factory ConversationMemberModel.fromJson(Map<String, dynamic> json) {
+    final rawDepartment =
+        json['department_name'] ??
+        json['departmentName'] ??
+        json['department'] ??
+        (json['user'] is Map<String, dynamic>
+            ? (json['user'] as Map<String, dynamic>)['department']
+            : null);
+
+    String departmentName = '';
+    if (rawDepartment is String) {
+      departmentName = rawDepartment;
+    } else if (rawDepartment is Map<String, dynamic>) {
+      final nestedName = rawDepartment['name'];
+      if (nestedName is String) {
+        departmentName = nestedName;
+      }
+    }
+
+    final rawUser = json['user'] is Map<String, dynamic>
+        ? json['user'] as Map<String, dynamic>
+        : null;
+
     return ConversationMemberModel(
       userId: json['user_id'] ?? '',
-      userName: json['user_name'] ?? '',
+      userName: json['user_name'] ?? json['userName'] ?? rawUser?['name'] ?? '',
+      departmentName: departmentName,
       joinedAt: DateTime.parse(
         json['joined_at'] ?? DateTime.now().toIso8601String(),
       ),

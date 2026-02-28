@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
 import '../../../data/datasources/notifications_remote_datasource.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/models/messaging_models.dart';
-import '../../messaging/bloc/messaging_bloc.dart';
-import '../../messaging/pages/chat_page.dart';
+import '../../../core/widgets/app_scaffold.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -47,7 +46,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Kunne ikke hente notifikationer.';
+        _error = 'Could not fetch notifications.';
         _isLoading = false;
       });
     }
@@ -72,9 +71,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kunne ikke markere notifikation som læst'),
-        ),
+        const SnackBar(content: Text('Could not mark notification as read')),
       );
     }
   }
@@ -97,9 +94,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kunne ikke markere notifikation som ulæst'),
-        ),
+        const SnackBar(content: Text('Could not mark notification as unread')),
       );
     }
   }
@@ -117,7 +112,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kunne ikke slette notifikation')),
+        const SnackBar(content: Text('Could not delete notification')),
       );
     }
   }
@@ -151,14 +146,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
         }
 
         if (conversation != null) {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BlocProvider.value(
-                value: context.read<MessagingBloc>(),
-                child: ChatPage(conversation: conversation!),
-              ),
-            ),
+          await context.push(
+            '/messages/chat/${conversation.id}',
+            extra: conversation,
           );
           return;
         }
@@ -169,7 +159,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
 
     if (relatedType == 'shift') {
-      await Navigator.pushNamed(context, '/calendar');
+      context.go('/calendar');
       return;
     }
 
@@ -177,9 +167,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       // Friendly fallback until ticket/absence detail pages exist.
       const SnackBar(
-        content: Text(
-          'Detaljevisning for denne notifikation er ikke tilgængelig endnu',
-        ),
+        content: Text('Detail view for this notification is not available yet'),
       ),
     );
   }
@@ -206,14 +194,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifikationer')),
+    return AppScaffold(
+      title: const Text('Notifications'),
+      showNotifications: false,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(child: Text(_error!))
           : _notifications.isEmpty
-          ? const Center(child: Text('Ingen notifikationer endnu'))
+          ? const Center(child: Text('No notifications yet'))
           : RefreshIndicator(
               onRefresh: _loadNotifications,
               child: ListView.separated(
@@ -257,13 +246,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           value: notification.isRead ? 'unread' : 'read',
                           child: Text(
                             notification.isRead
-                                ? 'Markér som ulæst'
-                                : 'Markér som læst',
+                                ? 'Mark as unread'
+                                : 'Mark as read',
                           ),
                         ),
                         const PopupMenuItem<String>(
                           value: 'delete',
-                          child: Text('Slet notifikation'),
+                          child: Text('Delete notification'),
                         ),
                       ],
                       child: notification.isRead

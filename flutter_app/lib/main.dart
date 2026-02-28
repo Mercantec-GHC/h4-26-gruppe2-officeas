@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_web_plugins/url_strategy.dart'
+    if (dart.library.io) 'core/config/url_strategy_stub.dart'
+    as url_strategy;
+import 'package:go_router/go_router.dart';
 import 'core/config/app_config.dart';
 import 'core/di/injection.dart';
-import 'domain/repositories/shift_repository.dart';
-import 'features/messaging/bloc/messaging_bloc.dart';
-import 'features/messaging/pages/conversations_page.dart';
+import 'core/routing/app_router.dart';
+import 'core/theme/theme.dart';
+import 'core/theme/theme_cubit.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
-import 'features/auth/pages/login_page.dart';
-import 'features/home/pages/home_page.dart';
-import 'features/calendar/pages/calendar_page.dart';
-import 'features/notifications/pages/notifications_page.dart';
-import 'core/theme/theme.dart';
+import 'features/tickets/bloc/tickets_bloc.dart';
+import 'features/messaging/bloc/messaging_bloc.dart';
 
 /// Main entry point
 ///
@@ -24,6 +25,9 @@ import 'core/theme/theme.dart';
 void main() async {
   // Sikr at Flutter bindings er initialiseret
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Path-based URLs on web (e.g. /home instead of #/home)
+  url_strategy.usePathUrlStrategy();
 
   // 1. Initialisér App Configuration
   // TODO: Skift til Environment.production når du deployer til produktion!
@@ -42,19 +46,23 @@ void main() async {
   runApp(const MyApp());
 }
 
-/// Tip: Skift environment nemt
-///
-/// For at skifte mellem localhost og deployed API, ændre bare Environment i main():
-/// - Development (localhost): Environment.development
-/// - Production (deployed): Environment.production
-/// - Staging (hvis I har det): Environment.staging
-
-/// Root app widget
-///
-/// Setup BLoC providers og MaterialApp.
-/// BLoCs injiceres via DI container (getIt).
-class MyApp extends StatelessWidget {
+/// Root app widget: BLoC providers, auth-notifier for router, MaterialApp.router.
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final ValueNotifier<bool> _authNotifier = ValueNotifier(false);
+  late final GoRouter _router = createAppRouter(_authNotifier);
+
+  @override
+  void dispose() {
+    _authNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,77 +79,33 @@ class MyApp extends StatelessWidget {
         ),
         // Messaging BLoC - injected via DI
         BlocProvider(create: (context) => getIt<MessagingBloc>()),
+        BlocProvider(create: (context) => getIt<TicketsBloc>()),
+        BlocProvider(create: (context) => ThemeCubit()..loadTheme()),
+
+        // TODO: Tilføj flere BLoCs her efterhånden:
+        // BlocProvider(
+        //   create: (context) => getIt<LoginBloc>(),
+        // ),
       ],
-      child: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          return MaterialApp(
-            title: 'OfficeAs',
-            theme: appTheme,
-            debugShowCheckedModeBanner: false,
-            home: state is Authenticated
-                ? const MainNavigation()
-                : const LoginPage(),
-            routes: {
-              '/login': (context) => const LoginPage(),
-              '/home': (context) => const HomePage(),
-              '/navigation': (context) => const MainNavigation(),
-              '/calendar': (context) =>
-                  CalendarPage(shiftRepository: getIt<ShiftRepository>()),
-              '/notifications': (context) => const NotificationsPage(),
-            },
-          );
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          final isAuthenticated = state is Authenticated;
+          if (_authNotifier.value != isAuthenticated) {
+            _authNotifier.value = isAuthenticated;
+          }
         },
-      ),
-    );
-  }
-}
-
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
-
-  @override
-  State<MainNavigation> createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
-
-  static final List<Widget> _pages = <Widget>[
-    const HomePage(),
-    const ConversationsPage(),
-    CalendarPage(shiftRepository: getIt<ShiftRepository>()),
-    const NotificationsPage(),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        backgroundColor: Colors.white,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.black54,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Hjem'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Beskeder',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Kalender',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none),
-            label: 'Notifikationer',
-          ),
-        ],
+        child: BlocBuilder<ThemeCubit, ThemeMode>(
+          builder: (context, themeMode) {
+            return MaterialApp.router(
+              title: 'Office A/S',
+              theme: appTheme,
+              darkTheme: appDarkTheme,
+              themeMode: themeMode,
+              debugShowCheckedModeBanner: false,
+              routerConfig: _router,
+            );
+          },
+        ),
       ),
     );
   }

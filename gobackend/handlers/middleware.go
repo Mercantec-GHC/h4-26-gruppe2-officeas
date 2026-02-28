@@ -70,38 +70,3 @@ func GetUserIDFromContext(ctx context.Context) (string, bool) {
 	return userID, ok
 }
 
-// GetEmailFromContext retrieves email from context
-func GetEmailFromContext(ctx context.Context) (string, bool) {
-	email, ok := ctx.Value(EmailKey).(string)
-	return email, ok
-}
-
-// OptionalAuthMiddleware validates JWT tokens but doesn't require them
-func OptionalAuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-
-		// If no auth header, just continue
-		if authHeader == "" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Try to parse token
-		parts := strings.Split(authHeader, " ")
-		if len(parts) == 2 && parts[0] == "Bearer" {
-			tokenString := parts[1]
-			token, err := parseAndValidateJWT(tokenString)
-
-			if err == nil && token.Valid {
-				if claims, ok := token.Claims.(*Claims); ok {
-					ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
-					ctx = context.WithValue(ctx, EmailKey, claims.Email)
-					r = r.WithContext(ctx)
-				}
-			}
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}

@@ -22,6 +22,17 @@ type Messaging struct {
 	Hub     *messaging.Hub
 }
 
+type SendMessageToUsersRequest struct {
+	UserIDs []uuid.UUID `json:"user_ids"`
+	Content string      `json:"content"`
+	IsGroup bool        `json:"is_group"`
+}
+
+type SendMessageToUsersResponse struct {
+	Conversation *models.ConversationDTO `json:"conversation"`
+	Message      *models.MessageDTO      `json:"message"`
+}
+
 // allowedWSOrigins lists production origins permitted for WebSocket connections.
 var allowedWSOrigins = map[string]bool{
 	"https://h4-flutter.mercantec.tech": true,
@@ -181,6 +192,70 @@ func (h Messaging) SendMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
+// POST /messages/multi — Create/reuse conversation and send message
+// ---------------------------------------------------------------------------
+
+// SendMessageToUsers godoc
+// @Summary      Send message to multiple users
+// @Description  Creates (or reuses) a conversation and sends a message to one or more recipients
+// @Tags         messaging
+// @Accept       json
+// @Produce      json
+// @Param        body  body  SendMessageToUsersRequest  true  "Recipients and content"
+// @Success      201  {object}  SendMessageToUsersResponse
+// @Failure      400  {string}  string  "Invalid request"
+// @Failure      401  {string}  string  "Unauthorized"
+// @Failure      403  {string}  string  "Forbidden"
+// @Security     BearerAuth
+// @Router       /messages/multi [post]
+func (h Messaging) SendMessageToUsers(w http.ResponseWriter, r *http.Request) {
+	userID, err := currentUserUUID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var req SendMessageToUsersRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<16)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		http.Error(w, "user_ids is required", http.StatusBadRequest)
+		return
+	}
+
+	participants := make([]uuid.UUID, 0, len(req.UserIDs)+1)
+	participants = append(participants, userID)
+	participants = append(participants, req.UserIDs...)
+
+	departmentID, err := h.Service.GetUserDepartmentID(userID)
+	if err != nil {
+		http.Error(w, "could not determine department", http.StatusInternalServerError)
+		return
+	}
+
+	isGroup := req.IsGroup || len(req.UserIDs) > 1
+	conversation, err := h.Service.CreateConversation(userID, departmentID, participants, isGroup)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+
+	msg, err := h.Service.SendMessage(userID, conversation.Id, req.Content)
+	if err != nil {
+		mapServiceError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(SendMessageToUsersResponse{Conversation: conversation, Message: msg})
+}
+
+// ---------------------------------------------------------------------------
 // GET /conversations/{id}/messages — Get messages (paginated)
 // ---------------------------------------------------------------------------
 
@@ -295,6 +370,41 @@ func (h Messaging) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
+// DELETE /messages/{id} — Soft-delete a message
+// ---------------------------------------------------------------------------
+
+// DeleteMessage godoc
+// @Summary      Soft-delete a message
+// @Description  Soft-deletes a message. Only sender (or Ledelse) may delete.
+// @Tags         messaging
+// @Param        id  path  string  true  "Message ID"
+// @Success      204  "No Content"
+// @Failure      401  {string}  string  "Unauthorized"
+// @Failure      403  {string}  string  "Forbidden"
+// @Failure      404  {string}  string  "Message not found"
+// @Security     BearerAuth
+// @Router       /messages/{id} [delete]
+func (h Messaging) DeleteMessage(w http.ResponseWriter, r *http.Request) {
+	userID, err := currentUserUUID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	msgID, ok := uuidParam(w, r, "id")
+	if !ok {
+		return
+	}
+
+	if err := h.Service.DeleteMessage(userID, msgID); err != nil {
+		mapServiceError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ---------------------------------------------------------------------------
 // GET /ws/messages — WebSocket endpoint
 // ---------------------------------------------------------------------------
 
@@ -338,12 +448,14 @@ func (h Messaging) WebSocket(w http.ResponseWriter, r *http.Request) {
 // RegisterMessaging registers all messaging routes.
 func RegisterMessaging(protectedRouter *mux.Router, rawRouter *mux.Router, h Messaging) {
 	// REST endpoints (protected by AuthMiddleware on protectedRouter)
-	protectedRouter.HandleFunc("/conversations", h.CreateConversation).Methods("POST")
-	protectedRouter.HandleFunc("/conversations", h.ListConversations).Methods("GET")
-	protectedRouter.HandleFunc("/conversations/{id}/messages", h.SendMessage).Methods("POST")
-	protectedRouter.HandleFunc("/conversations/{id}/messages", h.GetMessages).Methods("GET")
-	protectedRouter.HandleFunc("/conversations/{id}/unread", h.GetUnreadCount).Methods("GET")
-	protectedRouter.HandleFunc("/messages/{id}/read", h.MarkAsRead).Methods("PUT")
+	protectedRouter.Handle("/conversations", chainWithMiddlewares(h.CreateConversation, RequirePermission(ConversationAccess))).Methods("POST")
+	protectedRouter.Handle("/conversations", chainWithMiddlewares(h.ListConversations, RequirePermission(ConversationAccess))).Methods("GET")
+	protectedRouter.Handle("/conversations/{id}/messages", chainWithMiddlewares(h.SendMessage, RequirePermission(MessageSend), RequireConversationAccess())).Methods("POST")
+	protectedRouter.Handle("/conversations/{id}/messages", chainWithMiddlewares(h.GetMessages, RequireConversationAccess())).Methods("GET")
+	protectedRouter.Handle("/conversations/{id}/unread", chainWithMiddlewares(h.GetUnreadCount, RequireConversationAccess())).Methods("GET")
+	protectedRouter.Handle("/messages/multi", chainWithMiddlewares(h.SendMessageToUsers, RequirePermission(MessageSend))).Methods("POST")
+	protectedRouter.Handle("/messages/{id}/read", chainWithMiddlewares(h.MarkAsRead, RequirePermission(MessageSend))).Methods("PUT")
+	protectedRouter.Handle("/messages/{id}", chainWithMiddlewares(h.DeleteMessage, RequirePermission(MessageSend))).Methods("DELETE")
 
 	// WebSocket endpoint on the raw router (JWT verified inside handler)
 	rawRouter.HandleFunc("/ws/messages", h.WebSocket).Methods("GET")
@@ -371,6 +483,7 @@ var serviceErrorStatus = map[error]int{
 	messaging.ErrMessageNotFound: http.StatusNotFound,
 	messaging.ErrConvNotFound:    http.StatusNotFound,
 	messaging.ErrRateLimited:     http.StatusTooManyRequests,
+	messaging.ErrForbiddenDelete: http.StatusForbidden,
 }
 
 // mapServiceError turns a service error into an HTTP error response.

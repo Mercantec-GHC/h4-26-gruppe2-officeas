@@ -16,7 +16,7 @@ func SeedFeedback(db *gorm.DB) error {
 	}
 
 	for _, dept := range departments {
-		for _, rating := range []int{4, 5, 5} {
+		for _, rating := range []int{4, 7, 9} {
 			fb := models.Feedback{
 				Id:           uuid.New(),
 				DepartmentId: dept.Id,

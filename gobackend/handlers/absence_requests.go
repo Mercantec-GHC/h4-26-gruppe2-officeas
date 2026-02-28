@@ -25,9 +25,20 @@ type AbsenceRequests struct {
 // @Security     BearerAuth
 // @Router       /absence-requests [get]
 func (h AbsenceRequests) List(w http.ResponseWriter, r *http.Request) {
-	var list []models.AbsenceRequest
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	if err := h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").Find(&list).Error; err != nil {
+	var list []models.AbsenceRequest
+	query := h.DB.WithContext(r.Context()).Preload("User").Preload("ReviewedByUser").Preload("Comments")
+
+	if !isLedelse(currentUser) && !isHR(currentUser) {
+		query = query.Where("user_id = ?", currentUser.Id)
+	}
+
+	if err := query.Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -52,15 +63,26 @@ func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var a models.AbsenceRequest
 
-	if err := h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request not found", http.StatusNotFound)
 			return
 		}
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !CanAccessAbsenceRequest(currentUser, &a) {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -79,6 +101,12 @@ func (h AbsenceRequests) GetByID(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /absence-requests [post]
 func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var a models.AbsenceRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&a); err != nil {
@@ -88,11 +116,19 @@ func (h AbsenceRequests) Create(w http.ResponseWriter, r *http.Request) {
 
 	a.Id = uuid.New()
 
+	if !isLedelse(currentUser) {
+		if a.UserId != uuid.Nil && a.UserId != currentUser.Id {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		a.UserId = currentUser.Id
+	}
+
 	if a.Status == "" {
 		a.Status = models.RequestStatusPending
 	}
 
-	if err := h.DB.Create(&a).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Create(&a).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -120,8 +156,14 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var existing models.AbsenceRequest
-	if err := h.DB.First(&existing, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).First(&existing, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request not found", http.StatusNotFound)
 			return
@@ -139,22 +181,35 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 
 	a.Id = id
 
+	canReview := isLedelse(currentUser)
+	isOwner := existing.UserId == currentUser.Id
+
+	if !canReview && !isOwner {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	updates := map[string]interface{}{
-		"user_id":             a.UserId,
+		"user_id":             existing.UserId,
 		"type":                a.Type,
 		"start_date":          a.StartDate,
 		"end_date":            a.EndDate,
 		"shift_id":            a.ShiftId,
-		"status":              a.Status,
-		"reviewed_by_user_id": a.ReviewedByUserId,
+		"status":              existing.Status,
+		"reviewed_by_user_id": existing.ReviewedByUserId,
 	}
 
-	if a.Status == models.RequestStatusApproved || a.Status == models.RequestStatusRejected {
+	if canReview {
+		updates["status"] = a.Status
+		updates["reviewed_by_user_id"] = a.ReviewedByUserId
+	}
+
+	if canReview && (a.Status == models.RequestStatusApproved || a.Status == models.RequestStatusRejected) {
 		now := time.Now()
 		updates["reviewed_at"] = &now
 	}
 
-	result := h.DB.Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
+	result := h.DB.WithContext(r.Context()).Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
 
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
@@ -166,7 +221,7 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
+	h.DB.WithContext(r.Context()).Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
 
 	if existing.Status != a.Status {
 		relatedType := "absence_request"
@@ -213,15 +268,36 @@ func (h AbsenceRequests) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := h.DB.Delete(&models.AbsenceRequest{}, "id = ?", id)
-
-	if result.Error != nil {
-		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		http.Error(w, "absence request not found", http.StatusNotFound)
+	var existing models.AbsenceRequest
+	if err := h.DB.WithContext(r.Context()).First(&existing, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			http.Error(w, "absence request not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	if !isLedelse(currentUser) && !isHR(currentUser) && existing.UserId != currentUser.Id {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Delete comments first (foreign key from absence_request_comments to absence_requests)
+	if err := h.DB.WithContext(r.Context()).Where("absence_request_id = ?", id).Delete(&models.AbsenceRequestComment{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := h.DB.WithContext(r.Context()).Delete(&models.AbsenceRequest{}, "id = ?", id).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -246,16 +322,37 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !isLedelse(currentUser) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
+	if !HasPermission(currentUser, AbsenceRequestReview) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+
 	// Check if request exists
 	var a models.AbsenceRequest
 
-	if err := h.DB.First(&a, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).First(&a, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "absence request not found", http.StatusNotFound)
 			return
 		}
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if !isLedelse(currentUser) && a.UserId == currentUser.Id {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -268,16 +365,22 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
 	now := time.Now()
+	reviewedBy := currentUser.Id
 	updates := map[string]interface{}{
-		"status":      models.RequestStatusApproved,
-		"reviewed_at": &now,
+		"status":              models.RequestStatusApproved,
+		"reviewed_at":         &now,
+		"reviewed_by_user_id": reviewedBy,
 	}
 
 	if body.ReviewedByUserId != nil {
+		if !isLedelse(currentUser) && *body.ReviewedByUserId != currentUser.Id {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 		updates["reviewed_by_user_id"] = body.ReviewedByUserId
 	}
 
-	result := h.DB.Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
+	result := h.DB.WithContext(r.Context()).Model(&models.AbsenceRequest{}).Where("id = ?", id).Updates(updates)
 
 	if result.Error != nil {
 		http.Error(w, result.Error.Error(), http.StatusInternalServerError)
@@ -289,7 +392,7 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
+	h.DB.WithContext(r.Context()).Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", id)
 	if a.UserId != uuid.Nil {
 		relatedType := "absence_request"
 		createNotification(
@@ -306,12 +409,109 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(a)
 }
 
-// RegisterAbsenceRequests adds absence request routes
+// ReportSickToday godoc
+// @Summary      Report sick for today (same-day sick report)
+// @Description  Creates an absence request for today with type SICK_LEAVE and immediately approves it. Deletes any shifts the user has for today. Returns 409 if the user already has an approved absence for today.
+// @Tags         absence-requests
+// @Produce      json
+// @Success      201  {object}  models.AbsenceRequest
+// @Failure      409  {string}  string  "already has approved absence for today"
+// @Security     BearerAuth
+// @Router       /absence-requests/sick-today [post]
+func (h AbsenceRequests) ReportSickToday(w http.ResponseWriter, r *http.Request) {
+	userID, err := currentUserUUID(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+
+	var count int64
+
+	if err := h.DB.Model(&models.AbsenceRequest{}).
+		Where("user_id = ?", userID).
+		Where("status = ?", models.RequestStatusApproved).
+		Where("start_date <= ?", today).
+		Where("end_date >= ?", today).
+		Count(&count).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if count > 0 {
+		http.Error(w, "Already has approved absence for today", http.StatusConflict)
+		return
+	}
+
+	now := time.Now()
+	reviewedBy := userID
+
+	a := models.AbsenceRequest{
+		Id:               uuid.New(),
+		UserId:           userID,
+		Type:             models.AbsenceTypeSickLeave,
+		StartDate:        today,
+		EndDate:          today,
+		Status:           models.RequestStatusApproved,
+		CreatedAt:        now,
+		ReviewedAt:       &now,
+		ReviewedByUserId: &reviewedBy,
+	}
+
+	if err := h.DB.Create(&a).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	comment := models.AbsenceRequestComment{
+		Id:               uuid.New(),
+		AbsenceRequestId: a.Id,
+		UserId:           userID,
+		Content:          "Same-day sick report",
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+
+	if err := h.DB.Create(&comment).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Delete any shifts the user has for today (UTC date)
+	tomorrow := today.Add(24 * time.Hour)
+	if err := h.DB.Where("user_id = ?", userID).
+		Where("start_time >= ?", today).
+		Where("start_time < ?", tomorrow).
+		Delete(&models.Shift{}).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	relatedType := "absence_request"
+	createNotification(
+		h.DB,
+		userID,
+		"Absence approved",
+		"Your same-day sick report has been registered.",
+		models.NotificationTypeAbsenceApproved,
+		&a.Id,
+		&relatedType,
+	)
+
+	h.DB.Preload("User").Preload("ReviewedByUser").Preload("Comments").First(&a, "id = ?", a.Id)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(a)
+}
+
+// RegisterAbsenceRequests adds absence request routes.
 func RegisterAbsenceRequests(router *mux.Router, h AbsenceRequests, prefix string) {
-	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix, h.Create).Methods("POST")
-	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
-	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}/approve", h.Approve).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(AbsenceRequestCreate))).Methods("GET")
+	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(AbsenceRequestCreate))).Methods("POST")
+	router.HandleFunc(prefix+"/sick-today", h.ReportSickToday).Methods("POST")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.GetByID, RequirePermission(AbsenceRequestCreate))).Methods("GET")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Update, RequirePermission(AbsenceRequestCreate))).Methods("PUT")
+	router.Handle(prefix+"/{id}/approve", chainWithMiddlewares(h.Approve, RequirePermission(AbsenceRequestReview))).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(AbsenceRequestCreate))).Methods("DELETE")
 }

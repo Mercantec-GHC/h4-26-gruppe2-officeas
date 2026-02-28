@@ -11,8 +11,7 @@ import (
 // SeedAbsenceRequests creates absence requests for seed users.
 func SeedAbsenceRequests(db *gorm.DB) error {
 	var users []models.User
-	
-	if err := db.Where("email IN ?", SeedUserEmails).Find(&users).Error; err != nil {
+	if err := db.Limit(10).Find(&users).Error; err != nil {
 		return err
 	}
 	
@@ -26,12 +25,8 @@ func SeedAbsenceRequests(db *gorm.DB) error {
 		return err
 	}
 
-	aliceID := findUserIDByEmail(users, "alice@seed.example.com")
-	carolID := findUserIDByEmail(users, "carol@seed.example.com")
-	
-	if aliceID == uuid.Nil {
-		return nil
-	}
+	requesterID := users[0].Id
+	reviewerID := users[1].Id
 
 	baseStart := time.Date(2025, 2, 10, 0, 0, 0, 0, time.UTC)
 	baseEnd := time.Date(2025, 2, 14, 0, 0, 0, 0, time.UTC)
@@ -40,28 +35,28 @@ func SeedAbsenceRequests(db *gorm.DB) error {
 	requests := []models.AbsenceRequest{
 		{
 			Id:        uuid.New(),
-			UserId:    aliceID,
+			UserId:    requesterID,
 			Type:      models.AbsenceTypeVacation,
 			StartDate: baseStart,
 			EndDate:   baseEnd,
 			Status:    models.RequestStatusPending,
 		},
 		{
-			Id:        uuid.New(),
-			UserId:    aliceID,
-			Type:      models.AbsenceTypeSickLeave,
-			StartDate: baseStart.AddDate(0, 0, 20),
-			EndDate:   baseEnd.AddDate(0, 0, 20),
-			Status:    models.RequestStatusApproved,
-			ReviewedAt: &reviewedAt,
-			ReviewedByUserId: &carolID,
+			Id:                uuid.New(),
+			UserId:            requesterID,
+			Type:              models.AbsenceTypeSickLeave,
+			StartDate:         baseStart.AddDate(0, 0, 20),
+			EndDate:           baseEnd.AddDate(0, 0, 20),
+			Status:            models.RequestStatusApproved,
+			ReviewedAt:        &reviewedAt,
+			ReviewedByUserId:  &reviewerID,
 		},
 	}
 
 	if len(shifts) > 0 {
 		requests = append(requests, models.AbsenceRequest{
 			Id:        uuid.New(),
-			UserId:    aliceID,
+			UserId:    requesterID,
 			Type:      models.AbsenceTypePersonal,
 			StartDate: baseStart.AddDate(0, 0, 30),
 			EndDate:   baseEnd.AddDate(0, 0, 30),

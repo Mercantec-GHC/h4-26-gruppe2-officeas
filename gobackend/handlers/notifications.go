@@ -49,7 +49,13 @@ func (h Notifications) List(w http.ResponseWriter, r *http.Request) {
 
 	unreadOnly, _ := strconv.ParseBool(r.URL.Query().Get("unread_only"))
 
-	query := h.DB.Where("user_id = ?", userID).Order("created_at DESC")
+	query := h.DB.Model(&models.Notification{}).
+		Where("user_id = ?", userID).
+		Where("(related_entity_type <> ? OR related_entity_type IS NULL OR related_entity_id IN (?))",
+			"shift",
+			h.DB.Model(&models.Shift{}).Select("id").Where("user_id = ?", userID),
+		).
+		Order("created_at DESC")
 	if unreadOnly {
 		query = query.Where("read_at IS NULL")
 	}
@@ -82,6 +88,10 @@ func (h Notifications) UnreadCount(w http.ResponseWriter, r *http.Request) {
 	var count int64
 	if err := h.DB.Model(&models.Notification{}).
 		Where("user_id = ? AND read_at IS NULL", userID).
+		Where("(related_entity_type <> ? OR related_entity_type IS NULL OR related_entity_id IN (?))",
+			"shift",
+			h.DB.Model(&models.Shift{}).Select("id").Where("user_id = ?", userID),
+		).
 		Count(&count).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -214,11 +224,11 @@ func (h Notifications) Delete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterNotifications adds notification routes.
 func RegisterNotifications(router *mux.Router, h Notifications, prefix string) {
-	router.HandleFunc(prefix, h.List).Methods("GET")
-	router.HandleFunc(prefix+"/unread-count", h.UnreadCount).Methods("GET")
-	router.HandleFunc(prefix+"/{id}/read", h.MarkRead).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}/unread", h.MarkUnread).Methods("PUT")
-	router.HandleFunc(prefix+"/{id}", h.Delete).Methods("DELETE")
+	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(NotificationRead))).Methods("GET")
+	router.Handle(prefix+"/unread-count", chainWithMiddlewares(h.UnreadCount, RequirePermission(NotificationRead))).Methods("GET")
+	router.Handle(prefix+"/{id}/read", chainWithMiddlewares(h.MarkRead, RequirePermission(NotificationRead))).Methods("PUT")
+	router.Handle(prefix+"/{id}/unread", chainWithMiddlewares(h.MarkUnread, RequirePermission(NotificationRead))).Methods("PUT")
+	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.Delete, RequirePermission(NotificationRead))).Methods("DELETE")
 }
 
 func createNotification(
