@@ -185,13 +185,6 @@ class _HomePageState extends State<HomePage> {
           context,
         ).push(MaterialPageRoute(builder: (_) => const FeedbackPage())),
       ),
-      () => _actionCard(
-        context,
-        Icons.settings,
-        'Settings',
-        'App settings',
-        () {},
-      ),
     ];
 
     // Responsive dashboard layout
