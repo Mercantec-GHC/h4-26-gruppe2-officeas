@@ -208,6 +208,12 @@ func (h Departments) ListShifts(w http.ResponseWriter, r *http.Request) {
 func RegisterDepartments(router *mux.Router, h Departments, prefix string) {
 	router.HandleFunc(prefix, h.List).Methods("GET")
 	router.HandleFunc(prefix, h.Create).Methods("POST")
+	RegisterDepartmentsProtected(router, h, prefix)
+}
+
+// RegisterDepartmentsProtected adds department routes except GET list (use when GET list is public).
+func RegisterDepartmentsProtected(router *mux.Router, h Departments, prefix string) {
+	router.HandleFunc(prefix, h.Create).Methods("POST")
 	router.HandleFunc(prefix+"/{id}/shifts", h.ListShifts).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.GetByID).Methods("GET")
 	router.HandleFunc(prefix+"/{id}", h.Update).Methods("PUT")

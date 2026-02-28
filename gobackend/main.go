@@ -161,8 +161,10 @@ func main() {
 	// Feedback CRUD -> POST /feedback (auth via middleware on same router)
 	handlers.RegisterFeedback(protectedRouter, handlers.Feedback{DB: db}, "/feedback")
 
-	// Departments (protected) -> GET/POST /departments
-	handlers.RegisterDepartments(protectedRouter, handlers.Departments{DB: db}, "/departments")
+	// GET /departments is public (for registration form); other department routes are protected
+	deptHandler := handlers.Departments{DB: db}
+	publicRouter.HandleFunc("/departments", deptHandler.List).Methods("GET")
+	handlers.RegisterDepartmentsProtected(protectedRouter, deptHandler, "/departments")
 
 	// Users CRUD (protected) + profile image upload/serve
 	handlers.RegisterUsers(protectedRouter, handlers.Users{DB: db, UploadDir: uploadDir}, "/users")
