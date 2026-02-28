@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/departments_service.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/users_remote_datasource.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/models/user_model.dart';
@@ -86,11 +86,8 @@ class _UserRatingsOverviewPageState extends State<UserRatingsOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('User ratings'),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: const Text('User ratings'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
