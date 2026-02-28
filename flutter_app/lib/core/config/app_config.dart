@@ -81,6 +81,28 @@ class Environment {
     required this.enableErrorLogging,
   });
 
+  static Environment fromName(String envName, {String? apiBaseUrlOverride}) {
+    final normalized = envName.trim().toLowerCase();
+    final selected = switch (normalized) {
+      'production' => production,
+      'staging' => staging,
+      _ => development,
+    };
+
+    final override = apiBaseUrlOverride?.trim();
+    if (override == null || override.isEmpty) {
+      return selected;
+    }
+
+    return Environment._(
+      name: selected.name,
+      apiBaseUrl: override,
+      apiTimeout: selected.apiTimeout,
+      enableApiLogging: selected.enableApiLogging,
+      enableErrorLogging: selected.enableErrorLogging,
+    );
+  }
+
   /// Development environment (localhost)
   /// Brug når du udvikler lokalt og API kører på din maskine
   /// Note: Use localhost for Docker, or 127.0.0.1 for iOS Simulator

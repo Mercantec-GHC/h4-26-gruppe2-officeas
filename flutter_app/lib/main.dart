@@ -30,9 +30,17 @@ void main() async {
   url_strategy.usePathUrlStrategy();
 
   // 1. Initialisér App Configuration
-  // TODO: Skift til Environment.production når du deployer til produktion!
-  await AppConfig.initialize(Environment.development);
-  // await AppConfig.initialize(Environment.production);
+  const appEnv = String.fromEnvironment('APP_ENV', defaultValue: 'development');
+  const apiBaseUrlOverride = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+  final selectedEnvironment = Environment.fromName(
+    appEnv,
+    apiBaseUrlOverride: apiBaseUrlOverride,
+  );
+
+  await AppConfig.initialize(selectedEnvironment);
 
   // Log hvilket environment vi kører i
   debugPrint('🚀 Starting app in ${AppConfig.instance.environment.name} mode');

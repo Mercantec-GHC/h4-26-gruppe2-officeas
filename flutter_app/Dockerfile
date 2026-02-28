@@ -4,6 +4,9 @@ FROM ghcr.io/cirruslabs/flutter:stable AS build-env
 # Set working directory
 WORKDIR /app
 
+ARG APP_ENV=production
+ARG API_BASE_URL=/api
+
 # Copy pubspec files
 COPY pubspec.* ./
 
@@ -19,7 +22,9 @@ COPY assets/ ./assets/
 COPY analysis_options.yaml ./
 
 # Build for web
-RUN flutter build web --release
+RUN flutter build web --release \
+    --dart-define=APP_ENV=${APP_ENV} \
+    --dart-define=API_BASE_URL=${API_BASE_URL}
 
 # Stage 2: Create the run-time image
 FROM nginx:alpine
