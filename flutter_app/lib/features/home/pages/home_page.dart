@@ -4,8 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../../core/di/injection.dart';
+import '../../../domain/repositories/shift_repository.dart';
+import '../../../domain/entities/shift_entity.dart';
 import '../feedback_page.dart';
-import '../dummy_tickets.dart';
+
 import '../../tickets/bloc/tickets_bloc.dart';
 import '../../tickets/bloc/tickets_state.dart';
 import '../../tickets/bloc/tickets_event.dart';
@@ -71,6 +74,7 @@ class _HomePageState extends State<HomePage> {
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final showTickets = user != null && isItSupportDepartment(user);
+    final showAbsenceApprovals = user != null && isLedelseDepartment(user);
 
     final welcomeCard = Container(
       padding: const EdgeInsets.all(24),
@@ -157,6 +161,14 @@ class _HomePageState extends State<HomePage> {
         'View your schedule',
         () => context.go('/calendar'),
       ),
+      if (showAbsenceApprovals)
+        () => _actionCard(
+          context,
+          Icons.fact_check_outlined,
+          'Absences',
+          'Approve absence requests',
+          () => context.go('/absence/approvals'),
+        ),
       () => _actionCard(
         context,
         Icons.confirmation_num_outlined,
@@ -290,6 +302,15 @@ class _HomePageState extends State<HomePage> {
                                         () => context.go('/calendar'),
                                         expand: true,
                                       ),
+                                      if (showAbsenceApprovals)
+                                        () => _actionCard(
+                                          context,
+                                          Icons.fact_check_outlined,
+                                          'Absences',
+                                          'Approve absence requests',
+                                          () => context.go('/absence/approvals'),
+                                          expand: true,
+                                        ),
                                       () => _actionCard(
                                         context,
                                         Icons.confirmation_num_outlined,
@@ -311,14 +332,7 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                         expand: true,
                                       ),
-                                      () => _actionCard(
-                                        context,
-                                        Icons.settings,
-                                        'Settings',
-                                        'App settings',
-                                        () {},
-                                        expand: true,
-                                      ),
+                                 
                                     ]
                                     .map(
                                       (f) => Padding(
@@ -328,7 +342,7 @@ class _HomePageState extends State<HomePage> {
                                         child: f(),
                                       ),
                                     )
-                                    .toList(),
+                                    ,
                               ],
                             ),
                           ),
@@ -340,8 +354,9 @@ class _HomePageState extends State<HomePage> {
                         child: BlocBuilder<TicketsBloc, TicketsState>(
                           builder: (context, state) {
                             List<TicketModel> tickets = [];
-                            if (state is TicketsListLoaded)
+                            if (state is TicketsListLoaded) {
                               tickets = state.tickets;
+                            }
 
                             final lastThree = tickets.take(6).toList();
 
@@ -577,20 +592,74 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildShiftsPreview() {
-    return Column(
-      children: [
-        ListTile(
-          leading: const Icon(Icons.access_time),
-          title: const Text('Morning shift'),
-          subtitle: const Text('Today • 08:00 - 12:00'),
-        ),
-        const Divider(),
-        ListTile(
-          leading: const Icon(Icons.access_time),
-          title: const Text('Evening shift'),
-          subtitle: const Text('Tomorrow • 16:00 - 20:00'),
-        ),
-      ],
+    final authBloc = context.read<AuthBloc>();
+    final user = authBloc.currentUser;
+
+    Widget placeholder() {
+      return Column(
+        children: const [
+          ListTile(
+            leading: Icon(Icons.access_time),
+            title: Text('Morning shift'),
+            subtitle: Text('Today • 08:00 - 12:00'),
+          ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.access_time),
+            title: Text('Evening shift'),
+            subtitle: Text('Tomorrow • 16:00 - 20:00'),
+          ),
+        ],
+      );
+    }
+
+    if (user == null) return placeholder();
+
+    return FutureBuilder(
+      future: getIt<ShiftRepository>().getShiftsByUserId(user.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))),
+          );
+        }
+
+        final apiRes = snapshot.data;
+        try {
+          final shifts = apiRes?.dataOrNull as List<ShiftEntity>?;
+          if (shifts == null || shifts.isEmpty) return placeholder();
+
+          // sort by start time and pick active or next
+          shifts.sort((a, b) => a.startTime.compareTo(b.startTime));
+          final now = DateTime.now();
+
+          ShiftEntity? selected;
+          // prefer active
+          for (final s in shifts) {
+            if (s.isActive) {
+              selected = s;
+              break;
+            }
+          }
+          selected ??= shifts.firstWhere((s) => s.startTime.isAfter(now), orElse: () => shifts.first);
+
+          final startDate = DateFormat('EEE • dd/MM/yyyy').format(selected.startTime);
+          final timeRange = '${DateFormat.Hm().format(selected.startTime)} - ${DateFormat.Hm().format(selected.endTime)}';
+
+          return Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.access_time),
+                title: Text(selected.isActive ? 'Current shift' : 'Next shift'),
+                subtitle: Text('$startDate • $timeRange'),
+              ),
+            ],
+          );
+        } catch (_) {
+          return placeholder();
+        }
+      },
     );
   }
 
@@ -695,13 +764,19 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => showTickets
-                          ? const TicketListPage()
-                          : const DummyTicketsPage(),
-                    ),
-                  ),
+                  onPressed: () {
+                    if (showTickets) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => const TicketListPage(),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tickets are unavailable')),
+                      );
+                    }
+                  },
                   child: const Text('View all'),
                 ),
               ],

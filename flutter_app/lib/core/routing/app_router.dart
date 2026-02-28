@@ -6,6 +6,7 @@ import '../../features/auth/pages/pending_approval_page.dart';
 import '../../features/home/pages/home_page.dart';
 import '../../features/home/account.dart';
 import '../../features/calendar/pages/calendar_page.dart';
+import '../../features/calendar/pages/absence_approvals_page.dart';
 import '../../features/notifications/pages/notifications_page.dart';
 import '../../features/messaging/pages/conversations_page.dart';
 import '../../features/tickets/pages/ticket_list_page.dart';
@@ -32,6 +33,7 @@ bool _isValidPath(String path) {
     '/calendar',
     '/notifications',
     '/tickets',
+    '/absence/approvals',
     '/users/approvals',
     '/users/ratings',
   ];
@@ -112,6 +114,14 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
         builder: (_, __) =>
             const _LedelseHrGuard(child: UserRatingsOverviewPage()),
       ),
+      GoRoute(
+        path: '/absence/approvals',
+        builder: (_, __) => _LedelseGuard(
+          child: AbsenceApprovalsPage(
+            absenceRequestRepository: getIt<AbsenceRequestRepository>(),
+          ),
+        ),
+      ),
     ],
     errorBuilder: (context, state) => const LoginPage(),
   );
@@ -184,6 +194,26 @@ class _LedelseHrGuard extends StatelessWidget {
         if (context.mounted) context.go('/');
       });
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return child;
+  }
+}
+
+class _LedelseGuard extends StatelessWidget {
+  const _LedelseGuard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.read<AuthBloc>().currentUser;
+    if (!isLedelseDepartment(user)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
     return child;
   }

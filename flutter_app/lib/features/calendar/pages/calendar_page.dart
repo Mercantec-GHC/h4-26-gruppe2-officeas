@@ -304,8 +304,9 @@ class _CalendarPageState extends State<CalendarPage> {
                             lastDay: DateTime.utc(2030, 12, 31),
                             focusedDay: _focusedDate,
                             selectedDayPredicate: (day) {
-                              if (_startDate == null && _endDate == null)
+                              if (_startDate == null && _endDate == null) {
                                 return false;
+                              }
                               if (_startDate != null && _endDate == null) {
                                 return isSameDay(_startDate, day);
                               }
@@ -928,6 +929,40 @@ class _CalendarPageState extends State<CalendarPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (shift.userDepartmentName != null &&
+                          shift.userDepartmentName!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2.0),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.apartment,
+                              size: 12,
+                              color: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withValues(
+                                alpha: 0.72,
+                              ),
+                            ),
+                            const SizedBox(width: 4.0),
+                            Expanded(
+                              child: Text(
+                                shift.userDepartmentName!,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.color
+                                      ?.withValues(alpha: 0.72),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 2.0),
                       Text(
                         shift.formattedStartTime,

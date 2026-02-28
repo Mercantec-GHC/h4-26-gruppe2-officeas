@@ -81,7 +81,6 @@ func NewAuthorizationService(db *gorm.DB) *AuthorizationService {
 				TicketCreate:         {},
 				TicketView:           {},
 				AbsenceRequestCreate: {},
-				AbsenceRequestReview: {},
 				ShiftManage:          {},
 				ConversationAccess:   {},
 				MessageSend:          {},
