@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
-import 'pending_approval_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -88,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
                     end: Alignment.bottomRight,
                     colors: isDark
                         ? [scheme.surface, scheme.surfaceContainerHighest]
-                        : const [Color(0xFF0A66FF), Color(0xFF4B7CFF)],
+                        : [scheme.primary, scheme.primaryContainer],
                   ),
                 ),
                 child: SafeArea(
@@ -218,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
             shape: BoxShape.circle,
             color: Theme.of(context).brightness == Brightness.dark
                 ? Theme.of(context).colorScheme.surfaceContainerHighest
-                : Colors.blue.shade50,
+                : Theme.of(context).colorScheme.primaryContainer,
           ),
           child: Icon(
             Icons.business,

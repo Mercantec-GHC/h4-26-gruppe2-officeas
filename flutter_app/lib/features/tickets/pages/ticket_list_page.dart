@@ -90,12 +90,13 @@ class _TicketListBodyState extends State<_TicketListBody> {
     }
   }
 
-  Color _statusColor(String status) {
+  Color _statusColor(BuildContext context, String status) {
+    final scheme = Theme.of(context).colorScheme;
     switch (status) {
       case 'OPEN':
         return Colors.orange;
       case 'IN_PROGRESS':
-        return Colors.blue;
+        return scheme.primary;
       case 'RESOLVED':
         return Colors.green;
       case 'CLOSED':
@@ -302,7 +303,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
                   Text(
                     _statusLabel(selected.status),
                     style: TextStyle(
-                      color: _statusColor(selected.status),
+                      color: _statusColor(context, selected.status),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -412,7 +413,7 @@ class _TicketCard extends StatelessWidget {
                 _statusLabel(ticket.status),
                 style: TextStyle(
                   fontSize: 12,
-                  color: _statusColor(ticket.status),
+                  color: _statusColor(context, ticket.status),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -451,12 +452,13 @@ class _TicketCard extends StatelessWidget {
     }
   }
 
-  Color _statusColor(String status) {
+  Color _statusColor(BuildContext context, String status) {
+    final scheme = Theme.of(context).colorScheme;
     switch (status) {
       case 'OPEN':
         return Colors.orange;
       case 'IN_PROGRESS':
-        return Colors.blue;
+        return scheme.primary;
       case 'RESOLVED':
         return Colors.green;
       case 'CLOSED':

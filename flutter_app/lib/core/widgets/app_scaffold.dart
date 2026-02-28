@@ -38,6 +38,12 @@ class _AppScaffoldState extends State<AppScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final appBarBackground = isDark ? scheme.surface : scheme.primary;
+    final appBarForeground = isDark ? scheme.onSurface : scheme.onPrimary;
+
     final barActions = <Widget>[
       if (widget.actions != null) ...widget.actions!,
       AppTopBarActions(
@@ -50,6 +56,8 @@ class _AppScaffoldState extends State<AppScaffold> {
       key: _scaffoldKey,
       drawer: widget.showDrawer ? const AppDrawer() : null,
       appBar: AppBar(
+        backgroundColor: appBarBackground,
+        foregroundColor: appBarForeground,
         leading: widget.showDrawer
             ? IconButton(
                 icon: const Icon(Icons.menu),

@@ -13,8 +13,6 @@ import '../../features/tickets/pages/create_ticket_page.dart';
 import '../../features/users/pages/user_approvals_page.dart';
 import '../../features/users/pages/user_ratings_overview_page.dart';
 import '../di/injection.dart';
-import '../theme/theme.dart';
-import '../theme/theme_cubit.dart';
 import '../utils/department_utils.dart';
 import '../widgets/it_support_guard.dart';
 import '../../domain/repositories/shift_repository.dart';
@@ -63,17 +61,20 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
         return '/login';
       }
 
+      // Public auth pages while authenticated → /
+      if (isAuthenticated && _publicPaths.contains(path)) {
+        return '/';
+      }
+
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginPage(),
-      ),
+      GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(
         path: '/pending-approval',
         builder: (_, state) => PendingApprovalPage(
-          message: state.extra as String? ??
+          message:
+              state.extra as String? ??
               'Your account is pending HR/Ledelse approval. You can sign in once approved.',
         ),
       ),
@@ -81,10 +82,7 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
         path: '/',
         builder: (_, __) => const _MainNavShell(initialIndex: 0),
       ),
-      GoRoute(
-        path: '/account',
-        builder: (_, __) => const AccountPage(),
-      ),
+      GoRoute(path: '/account', builder: (_, __) => const AccountPage()),
       GoRoute(
         path: '/messages',
         builder: (_, __) => const _MainNavShell(initialIndex: 1),
@@ -99,8 +97,7 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
       ),
       GoRoute(
         path: '/tickets',
-        builder: (_, __) =>
-            const ItSupportGuard(child: TicketListPage()),
+        builder: (_, __) => const ItSupportGuard(child: TicketListPage()),
       ),
       GoRoute(
         path: '/tickets/new',
@@ -112,9 +109,8 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
       ),
       GoRoute(
         path: '/users/ratings',
-        builder: (_, __) => const _LedelseHrGuard(
-          child: UserRatingsOverviewPage(),
-        ),
+        builder: (_, __) =>
+            const _LedelseHrGuard(child: UserRatingsOverviewPage()),
       ),
     ],
     errorBuilder: (context, state) => const LoginPage(),
@@ -134,7 +130,7 @@ class _MainNavShell extends StatelessWidget {
 }
 
 class _MainNavigation extends StatefulWidget {
-  const _MainNavigation({super.key, this.initialIndex = 0});
+  const _MainNavigation({this.initialIndex = 0});
 
   final int initialIndex;
 
@@ -171,9 +167,7 @@ class _MainNavigationState extends State<_MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_selectedIndex],
-    );
+    return Scaffold(body: _pages[_selectedIndex]);
   }
 }
 
@@ -189,9 +183,7 @@ class _LedelseHrGuard extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go('/');
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     return child;
   }

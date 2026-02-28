@@ -10,6 +10,12 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerBackground = isDark
+        ? scheme.surfaceContainerHigh
+        : scheme.primary;
+    final headerForeground = isDark ? scheme.onSurface : scheme.onPrimary;
     final user = context.read<AuthBloc>().currentUser;
     final showTickets = isItSupportDepartment(user);
     final showApprovals = canApproveAccounts(user);
@@ -19,11 +25,11 @@ class AppDrawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue.shade700),
+            decoration: BoxDecoration(color: headerBackground),
             child: Text(
               'Office A/S',
               style: TextStyle(
-                color: Colors.white,
+                color: headerForeground,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),

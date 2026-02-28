@@ -49,7 +49,13 @@ func (h Notifications) List(w http.ResponseWriter, r *http.Request) {
 
 	unreadOnly, _ := strconv.ParseBool(r.URL.Query().Get("unread_only"))
 
-	query := h.DB.Where("user_id = ?", userID).Order("created_at DESC")
+	query := h.DB.Model(&models.Notification{}).
+		Where("user_id = ?", userID).
+		Where("(related_entity_type <> ? OR related_entity_type IS NULL OR related_entity_id IN (?))",
+			"shift",
+			h.DB.Model(&models.Shift{}).Select("id").Where("user_id = ?", userID),
+		).
+		Order("created_at DESC")
 	if unreadOnly {
 		query = query.Where("read_at IS NULL")
 	}
@@ -82,6 +88,10 @@ func (h Notifications) UnreadCount(w http.ResponseWriter, r *http.Request) {
 	var count int64
 	if err := h.DB.Model(&models.Notification{}).
 		Where("user_id = ? AND read_at IS NULL", userID).
+		Where("(related_entity_type <> ? OR related_entity_type IS NULL OR related_entity_id IN (?))",
+			"shift",
+			h.DB.Model(&models.Shift{}).Select("id").Where("user_id = ?", userID),
+		).
 		Count(&count).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

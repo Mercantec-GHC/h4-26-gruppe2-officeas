@@ -11,8 +11,6 @@ import 'core/theme/theme.dart';
 import 'core/theme/theme_cubit.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/bloc/auth_state.dart';
-import 'features/auth/pages/login_page.dart';
-import 'features/auth/pages/pending_approval_page.dart';
 import 'features/tickets/bloc/tickets_bloc.dart';
 import 'features/messaging/bloc/messaging_bloc.dart';
 
@@ -94,7 +92,6 @@ class _MyAppState extends State<MyApp> {
           final isAuthenticated = state is Authenticated;
           if (_authNotifier.value != isAuthenticated) {
             _authNotifier.value = isAuthenticated;
-            if (isAuthenticated) context.go('/');
           }
         },
         child: BlocBuilder<ThemeCubit, ThemeMode>(

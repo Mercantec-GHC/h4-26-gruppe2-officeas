@@ -584,8 +584,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                                 : 'Create shifts',
                                           ),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                Colors.blue.shade700,
+                                            backgroundColor: scheme.primary,
                                             foregroundColor: isDark
                                                 ? scheme.onPrimary
                                                 : Colors.white,
