@@ -35,6 +35,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Home'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
               context.go('/');
             },
           ),
@@ -43,6 +44,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Messages'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
               context.go('/messages');
             },
           ),
@@ -51,6 +53,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Calendar'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
               context.go('/calendar');
             },
           ),
@@ -59,6 +62,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Notifications'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
               context.go('/notifications');
             },
           ),
@@ -68,6 +72,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Tickets'),
               onTap: () {
                 Navigator.pop(context);
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 context.go('/tickets');
               },
             ),
@@ -76,6 +81,7 @@ class AppDrawer extends StatelessWidget {
             title: const Text('Create ticket'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.of(context).popUntil((route) => route.isFirst);
               context.go('/tickets/new');
             },
           ),
@@ -85,6 +91,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Approve accounts'),
               onTap: () {
                 Navigator.pop(context);
+                Navigator.of(context).popUntil((route) => route.isFirst);
                 context.go('/users/approvals');
               },
             ),
@@ -94,6 +101,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('User ratings'),
               onTap: () {
                 Navigator.pop(context);
+                Navigator.of(context).popUntil((route) => route.isFirst);
                 context.go('/users/ratings');
               },
             ),
@@ -103,6 +111,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Approve absences'),
               onTap: () {
                 Navigator.pop(context);
+                Navigator.of(context).popUntil((route) => route.isFirst);
                 context.go('/absence/approvals');
               },
             ),
