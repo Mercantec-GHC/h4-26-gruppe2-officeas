@@ -71,6 +71,7 @@ class _HomePageState extends State<HomePage> {
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
     final showTickets = user != null && isItSupportDepartment(user);
+    final showAbsenceApprovals = user != null && isLedelseDepartment(user);
 
     final welcomeCard = Container(
       padding: const EdgeInsets.all(24),
@@ -157,6 +158,14 @@ class _HomePageState extends State<HomePage> {
         'View your schedule',
         () => context.go('/calendar'),
       ),
+      if (showAbsenceApprovals)
+        () => _actionCard(
+          context,
+          Icons.fact_check_outlined,
+          'Absences',
+          'Approve absence requests',
+          () => context.go('/absence/approvals'),
+        ),
       () => _actionCard(
         context,
         Icons.confirmation_num_outlined,
@@ -290,6 +299,15 @@ class _HomePageState extends State<HomePage> {
                                         () => context.go('/calendar'),
                                         expand: true,
                                       ),
+                                      if (showAbsenceApprovals)
+                                        () => _actionCard(
+                                          context,
+                                          Icons.fact_check_outlined,
+                                          'Absences',
+                                          'Approve absence requests',
+                                          () => context.go('/absence/approvals'),
+                                          expand: true,
+                                        ),
                                       () => _actionCard(
                                         context,
                                         Icons.confirmation_num_outlined,
@@ -328,7 +346,7 @@ class _HomePageState extends State<HomePage> {
                                         child: f(),
                                       ),
                                     )
-                                    .toList(),
+                                    ,
                               ],
                             ),
                           ),
@@ -340,8 +358,9 @@ class _HomePageState extends State<HomePage> {
                         child: BlocBuilder<TicketsBloc, TicketsState>(
                           builder: (context, state) {
                             List<TicketModel> tickets = [];
-                            if (state is TicketsListLoaded)
+                            if (state is TicketsListLoaded) {
                               tickets = state.tickets;
+                            }
 
                             final lastThree = tickets.take(6).toList();
 

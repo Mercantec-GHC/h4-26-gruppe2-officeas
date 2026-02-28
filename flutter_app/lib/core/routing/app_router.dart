@@ -6,6 +6,7 @@ import '../../features/auth/pages/pending_approval_page.dart';
 import '../../features/home/pages/home_page.dart';
 import '../../features/home/account.dart';
 import '../../features/calendar/pages/calendar_page.dart';
+import '../../features/calendar/pages/absence_approvals_page.dart';
 import '../../features/notifications/pages/notifications_page.dart';
 import '../../features/messaging/pages/conversations_page.dart';
 import '../../features/tickets/pages/ticket_list_page.dart';
@@ -13,8 +14,6 @@ import '../../features/tickets/pages/create_ticket_page.dart';
 import '../../features/users/pages/user_approvals_page.dart';
 import '../../features/users/pages/user_ratings_overview_page.dart';
 import '../di/injection.dart';
-import '../theme/theme.dart';
-import '../theme/theme_cubit.dart';
 import '../utils/department_utils.dart';
 import '../widgets/it_support_guard.dart';
 import '../../domain/repositories/shift_repository.dart';
@@ -34,6 +33,7 @@ bool _isValidPath(String path) {
     '/calendar',
     '/notifications',
     '/tickets',
+    '/absence/approvals',
     '/users/approvals',
     '/users/ratings',
   ];
@@ -116,6 +116,14 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
           child: UserRatingsOverviewPage(),
         ),
       ),
+      GoRoute(
+        path: '/absence/approvals',
+        builder: (_, __) => _LedelseGuard(
+          child: AbsenceApprovalsPage(
+            absenceRequestRepository: getIt<AbsenceRequestRepository>(),
+          ),
+        ),
+      ),
     ],
     errorBuilder: (context, state) => const LoginPage(),
   );
@@ -134,7 +142,7 @@ class _MainNavShell extends StatelessWidget {
 }
 
 class _MainNavigation extends StatefulWidget {
-  const _MainNavigation({super.key, this.initialIndex = 0});
+  const _MainNavigation({this.initialIndex = 0});
 
   final int initialIndex;
 
@@ -186,6 +194,26 @@ class _LedelseHrGuard extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.read<AuthBloc>().currentUser;
     if (!canApproveAccounts(user)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return child;
+  }
+}
+
+class _LedelseGuard extends StatelessWidget {
+  const _LedelseGuard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.read<AuthBloc>().currentUser;
+    if (!isLedelseDepartment(user)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) context.go('/');
       });

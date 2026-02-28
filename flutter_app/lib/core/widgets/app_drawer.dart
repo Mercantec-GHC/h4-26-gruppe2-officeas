@@ -13,6 +13,7 @@ class AppDrawer extends StatelessWidget {
     final user = context.read<AuthBloc>().currentUser;
     final showTickets = isItSupportDepartment(user);
     final showApprovals = canApproveAccounts(user);
+    final showAbsenceApprovals = isLedelseDepartment(user);
 
     return Drawer(
       child: ListView(
@@ -94,6 +95,15 @@ class AppDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 context.go('/users/ratings');
+              },
+            ),
+          if (showAbsenceApprovals)
+            ListTile(
+              leading: const Icon(Icons.fact_check_outlined),
+              title: const Text('Approve absences'),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/absence/approvals');
               },
             ),
           const Divider(),

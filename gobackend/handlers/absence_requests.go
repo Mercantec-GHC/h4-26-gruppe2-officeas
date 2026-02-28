@@ -181,15 +181,10 @@ func (h AbsenceRequests) Update(w http.ResponseWriter, r *http.Request) {
 
 	a.Id = id
 
-	canReview := isLedelse(currentUser) || isHR(currentUser)
+	canReview := isLedelse(currentUser)
 	isOwner := existing.UserId == currentUser.Id
 
 	if !canReview && !isOwner {
-		http.Error(w, "forbidden", http.StatusForbidden)
-		return
-	}
-
-	if canReview && !isLedelse(currentUser) && existing.UserId == currentUser.Id && (a.Status == models.RequestStatusApproved || a.Status == models.RequestStatusRejected) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
@@ -330,6 +325,11 @@ func (h AbsenceRequests) Approve(w http.ResponseWriter, r *http.Request) {
 	r, currentUser, err := ensureCurrentUserForAuthorization(r, h.DB)
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if !isLedelse(currentUser) {
+		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
 

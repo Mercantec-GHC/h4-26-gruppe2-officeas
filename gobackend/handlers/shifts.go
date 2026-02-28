@@ -34,7 +34,7 @@ func (h Shifts) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var list []models.Shift
-	query := h.DB.WithContext(r.Context()).Preload("User")
+	query := h.DB.WithContext(r.Context()).Preload("User").Preload("User.Department")
 
 	if !isLedelse(currentUser) && !isHR(currentUser) {
 		query = query.Where("user_id = ?", currentUser.Id)
@@ -74,7 +74,7 @@ func (h Shifts) GetByID(w http.ResponseWriter, r *http.Request) {
 
 	var s models.Shift
 
-	if err := h.DB.WithContext(r.Context()).Preload("User").First(&s, "id = ?", id).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Preload("User").Preload("User.Department").First(&s, "id = ?", id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			http.Error(w, "shift not found", http.StatusNotFound)
 			return
@@ -179,7 +179,7 @@ func (h Shifts) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.DB.Preload("User").First(&s, "id = ?", id)
+	h.DB.Preload("User").Preload("User.Department").First(&s, "id = ?", id)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
 }
@@ -264,7 +264,7 @@ func (h Shifts) ListByUser(w http.ResponseWriter, r *http.Request) {
 
 	var list []models.Shift
 
-	if err := h.DB.WithContext(r.Context()).Preload("User").Where("user_id = ?", userId).Find(&list).Error; err != nil {
+	if err := h.DB.WithContext(r.Context()).Preload("User").Preload("User.Department").Where("user_id = ?", userId).Find(&list).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -511,7 +511,7 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 
 	// Preload User on created shifts for response
 	for i := range toCreate {
-		_ = h.DB.Preload("User").First(&toCreate[i], "id = ?", toCreate[i].Id).Error
+		_ = h.DB.Preload("User").Preload("User.Department").First(&toCreate[i], "id = ?", toCreate[i].Id).Error
 	}
 
 	w.Header().Set("Content-Type", "application/json")
