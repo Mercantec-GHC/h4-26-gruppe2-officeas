@@ -86,7 +86,7 @@ class Environment {
   /// Note: Use localhost for Docker, or 127.0.0.1 for iOS Simulator
   static const development = Environment._(
     name: 'development',
-    apiBaseUrl: 'http://localhost:8080',
+    apiBaseUrl: 'http://localhost:8080/api',
     apiTimeout: 30000, // 30 sekunder
     enableApiLogging: true,
     enableErrorLogging: true,
