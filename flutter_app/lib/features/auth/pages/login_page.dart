@@ -132,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                                           ),
                                           const SizedBox(height: 24),
                                           Text(
-                                            'Welcome to OfficeAs',
+                                            'Welcome to Office A/S',
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .headlineLarge
@@ -227,7 +227,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 12),
         Text(
-          'OfficeAs',
+          'Office A/S',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),

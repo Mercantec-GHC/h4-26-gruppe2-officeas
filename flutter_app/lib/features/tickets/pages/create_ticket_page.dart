@@ -54,6 +54,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: const Text('Create ticket'),
+      showBackButtonWhenPossible: true,
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
           if (state is TicketsError) {

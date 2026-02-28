@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/messaging_remote_datasource.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../data/models/user_model.dart';
@@ -8,7 +9,6 @@ import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
 import '../bloc/messaging_event.dart';
 import '../bloc/messaging_state.dart';
-import 'chat_page.dart';
 
 /// Page for searching users and starting a new conversation.
 class NewConversationPage extends StatefulWidget {
@@ -136,15 +136,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BlocProvider.value(
-            value: bloc,
-            child: ChatPage(conversation: conv),
-          ),
-        ),
-      );
+      context.go('/messages/chat/${conv.id}', extra: conv);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -163,22 +155,23 @@ class _NewConversationPageState extends State<NewConversationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New conversation'),
-        actions: [
-          const AppTopBarActions(),
-          TextButton(
-            onPressed: _selectedUserIds.isEmpty || _isSubmitting
-                ? null
-                : _createOrSendToSelection,
-            child: Text(
-              _isSubmitting ? 'SENDING...' : 'NEXT',
-              style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
-            ),
+    final appBarForeground =
+        Theme.of(context).appBarTheme.foregroundColor ??
+        Theme.of(context).colorScheme.onSurface;
+    return AppScaffold(
+      title: const Text('New conversation'),
+      showBackButtonWhenPossible: true,
+      actions: [
+        TextButton(
+          onPressed: _selectedUserIds.isEmpty || _isSubmitting
+              ? null
+              : _createOrSendToSelection,
+          child: Text(
+            _isSubmitting ? 'SENDING...' : 'NEXT',
+            style: TextStyle(color: appBarForeground),
           ),
-        ],
-      ),
+        ),
+      ],
       body: Column(
         children: [
           // Search bar
@@ -211,8 +204,7 @@ class _NewConversationPageState extends State<NewConversationPage> {
               controller: _messageController,
               maxLines: 2,
               decoration: InputDecoration(
-                hintText:
-                    'Optional: write first message to all selected users',
+                hintText: 'Optional: write first message to all selected users',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

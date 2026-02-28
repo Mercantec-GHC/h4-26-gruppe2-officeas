@@ -7,13 +7,10 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../../core/di/injection.dart';
 import '../../../domain/repositories/shift_repository.dart';
 import '../../../domain/entities/shift_entity.dart';
-import '../feedback_page.dart';
 
 import '../../tickets/bloc/tickets_bloc.dart';
 import '../../tickets/bloc/tickets_state.dart';
 import '../../tickets/bloc/tickets_event.dart';
-import '../../tickets/pages/ticket_detail_page.dart';
-import '../../tickets/pages/ticket_list_page.dart';
 import '../../../core/utils/department_utils.dart';
 import '../../../data/models/ticket_model.dart';
 
@@ -35,9 +32,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _openTicketsList(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (context) => const TicketListPage()),
-    );
+    context.push('/tickets');
   }
 
   @override
@@ -46,7 +41,7 @@ class _HomePageState extends State<HomePage> {
     final user = authBloc.currentUser;
 
     return AppScaffold(
-      title: const Text('OfficeAs'),
+      title: const Text('Office A/S'),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -95,7 +90,7 @@ class _HomePageState extends State<HomePage> {
           Icon(Icons.business, size: 80, color: scheme.primary),
           const SizedBox(height: 24),
           Text(
-            'Welcome to OfficeAs!',
+            'Welcome to Office A/S!',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: scheme.primary,
@@ -181,9 +176,7 @@ class _HomePageState extends State<HomePage> {
         Icons.feedback_outlined,
         'Feedback',
         'Give feedback',
-        () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const FeedbackPage())),
+        () => context.push('/feedback'),
       ),
       () => _actionCard(
         context,
@@ -294,55 +287,45 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 // stacked full-width action cards
                                 ...[
-                                      () => _actionCard(
-                                        context,
-                                        Icons.calendar_today,
-                                        'Shifts',
-                                        'View your schedule',
-                                        () => context.go('/calendar'),
-                                        expand: true,
-                                      ),
-                                      if (showAbsenceApprovals)
-                                        () => _actionCard(
-                                          context,
-                                          Icons.fact_check_outlined,
-                                          'Absences',
-                                          'Approve absence requests',
-                                          () => context.go('/absence/approvals'),
-                                          expand: true,
-                                        ),
-                                      () => _actionCard(
-                                        context,
-                                        Icons.confirmation_num_outlined,
-                                        'Tickets',
-                                        'Report an issue',
-                                        () => _openTicketsList(context),
-                                        expand: true,
-                                      ),
-                                      () => _actionCard(
-                                        context,
-                                        Icons.feedback_outlined,
-                                        'Feedback',
-                                        'Give feedback',
-                                        () => Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                const FeedbackPage(),
-                                          ),
-                                        ),
-                                        expand: true,
-                                      ),
-                                 
-                                    ]
-                                    .map(
-                                      (f) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
-                                        ),
-                                        child: f(),
-                                      ),
-                                    )
-                                    ,
+                                  () => _actionCard(
+                                    context,
+                                    Icons.calendar_today,
+                                    'Shifts',
+                                    'View your schedule',
+                                    () => context.go('/calendar'),
+                                    expand: true,
+                                  ),
+                                  if (showAbsenceApprovals)
+                                    () => _actionCard(
+                                      context,
+                                      Icons.fact_check_outlined,
+                                      'Absences',
+                                      'Approve absence requests',
+                                      () => context.go('/absence/approvals'),
+                                      expand: true,
+                                    ),
+                                  () => _actionCard(
+                                    context,
+                                    Icons.confirmation_num_outlined,
+                                    'Tickets',
+                                    'Report an issue',
+                                    () => _openTicketsList(context),
+                                    expand: true,
+                                  ),
+                                  () => _actionCard(
+                                    context,
+                                    Icons.feedback_outlined,
+                                    'Feedback',
+                                    'Give feedback',
+                                    () => context.push('/feedback'),
+                                    expand: true,
+                                  ),
+                                ].map(
+                                  (f) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: f(),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -395,12 +378,7 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                       TextButton(
                                         onPressed: () =>
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute<void>(
-                                                builder: (context) =>
-                                                    const TicketListPage(),
-                                              ),
-                                            ),
+                                            context.push('/tickets'),
                                         child: const Text('View all'),
                                       ),
                                     ],
@@ -442,13 +420,8 @@ class _HomePageState extends State<HomePage> {
                                           Icons.chevron_right,
                                           size: 20,
                                         ),
-                                        onTap: () => Navigator.of(context).push(
-                                          MaterialPageRoute<void>(
-                                            builder: (context) =>
-                                                TicketDetailPage(
-                                                  ticketId: ticket.id,
-                                                ),
-                                          ),
+                                        onTap: () => context.push(
+                                          '/tickets/${ticket.id}',
                                         ),
                                       ),
                                     ),
@@ -621,13 +594,19 @@ class _HomePageState extends State<HomePage> {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16.0),
-            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+            ),
           );
         }
 
         final apiRes = snapshot.data;
         try {
-          final shifts = apiRes?.dataOrNull as List<ShiftEntity>?;
+          final shifts = apiRes?.dataOrNull;
           if (shifts == null || shifts.isEmpty) return placeholder();
 
           // sort by start time and pick active or next
@@ -642,10 +621,16 @@ class _HomePageState extends State<HomePage> {
               break;
             }
           }
-          selected ??= shifts.firstWhere((s) => s.startTime.isAfter(now), orElse: () => shifts.first);
+          selected ??= shifts.firstWhere(
+            (s) => s.startTime.isAfter(now),
+            orElse: () => shifts.first,
+          );
 
-          final startDate = DateFormat('EEE • dd/MM/yyyy').format(selected.startTime);
-          final timeRange = '${DateFormat.Hm().format(selected.startTime)} - ${DateFormat.Hm().format(selected.endTime)}';
+          final startDate = DateFormat(
+            'EEE • dd/MM/yyyy',
+          ).format(selected.startTime);
+          final timeRange =
+              '${DateFormat.Hm().format(selected.startTime)} - ${DateFormat.Hm().format(selected.endTime)}';
 
           return Column(
             children: [
@@ -680,11 +665,7 @@ class _HomePageState extends State<HomePage> {
                 subtitle: Text(
                   '${_statusLabel(t.status)} · ${DateFormat('dd/MM/yyyy').format(t.createdAt)}',
                 ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => TicketDetailPage(ticketId: t.id),
-                  ),
-                ),
+                onTap: () => context.push('/tickets/${t.id}'),
               ),
               const Divider(),
             ],
@@ -766,14 +747,12 @@ class _HomePageState extends State<HomePage> {
                 TextButton(
                   onPressed: () {
                     if (showTickets) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) => const TicketListPage(),
-                        ),
-                      );
+                      context.push('/tickets');
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tickets are unavailable')),
+                        const SnackBar(
+                          content: Text('Tickets are unavailable'),
+                        ),
                       );
                     }
                   },
@@ -831,11 +810,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (context) => const TicketListPage(),
-                      ),
-                    ),
+                    onPressed: () => context.push('/tickets'),
                     child: const Text('View all'),
                   ),
                 ],
@@ -866,12 +841,7 @@ class _HomePageState extends State<HomePage> {
                       style: TextStyle(fontSize: 12, color: subduedText),
                     ),
                     trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (context) =>
-                            TicketDetailPage(ticketId: ticket.id),
-                      ),
-                    ),
+                    onTap: () => context.push('/tickets/${ticket.id}'),
                   ),
                 ),
             ],

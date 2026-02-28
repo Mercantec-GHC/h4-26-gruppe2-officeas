@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/ticket_model.dart';
 import '../bloc/tickets_bloc.dart';
 import '../bloc/tickets_event.dart';
 import '../bloc/tickets_state.dart';
-import 'ticket_detail_page.dart';
-import 'create_ticket_page.dart';
 
 class TicketListPage extends StatefulWidget {
   const TicketListPage({super.key});
@@ -265,12 +264,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
                     if (isWide) {
                       _selectTicket(ticket.id);
                     } else {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (context) =>
-                              TicketDetailPage(ticketId: ticket.id),
-                        ),
-                      );
+                      context.push('/tickets/${ticket.id}');
                     }
                   },
                 );
@@ -328,12 +322,8 @@ class _TicketListBodyState extends State<_TicketListBody> {
                   Row(
                     children: [
                       ElevatedButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                TicketDetailPage(ticketId: selected.id),
-                          ),
-                        ),
+                        onPressed: () =>
+                            context.push('/tickets/${selected.id}'),
                         child: const Text('Open'),
                       ),
                       const SizedBox(width: 8),
@@ -371,11 +361,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => const CreateTicketPage(),
-          ),
-        ),
+        onPressed: () => context.push('/tickets/new'),
         tooltip: 'Create ticket',
         child: const Icon(Icons.add),
       ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
@@ -50,13 +50,9 @@ class _ChatPageState extends State<ChatPage> {
     final currentUserId =
         context.read<AuthBloc>().currentUser?.id.toString() ?? '';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.conversation.displayNameWithDepartment(currentUserId),
-        ),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: Text(widget.conversation.displayNameWithDepartment(currentUserId)),
+      showBackButtonWhenPossible: true,
       body: BlocListener<MessagingBloc, MessagingState>(
         listenWhen: (prev, curr) => curr is MessagingError,
         listener: (context, state) {

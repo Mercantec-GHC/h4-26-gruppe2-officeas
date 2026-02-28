@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/models/messaging_models.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../bloc/messaging_bloc.dart';
 import '../bloc/messaging_event.dart';
 import '../bloc/messaging_state.dart';
-import 'chat_page.dart';
-import 'new_conversation_page.dart';
 
 /// Page that displays the list of conversations.
 class ConversationsPage extends StatefulWidget {
@@ -26,7 +25,6 @@ class _ConversationsPageState extends State<ConversationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return AppScaffold(
       title: const Text('Messages'),
       body: BlocBuilder<MessagingBloc, MessagingState>(
@@ -57,21 +55,12 @@ class _ConversationsPageState extends State<ConversationsPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => BlocProvider.value(
-                value: context.read<MessagingBloc>(),
-                child: const NewConversationPage(),
-              ),
-            ),
-          );
+          await context.push('/messages/new');
           if (context.mounted) {
             context.read<MessagingBloc>().add(LoadConversations());
           }
         },
-        backgroundColor: scheme.primary,
-        child: Icon(Icons.edit, color: scheme.onPrimary),
+        child: const Icon(Icons.edit),
       ),
     );
   }
@@ -190,14 +179,9 @@ class _ConversationTile extends StatelessWidget {
         ],
       ),
       onTap: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider.value(
-              value: context.read<MessagingBloc>(),
-              child: ChatPage(conversation: conversation),
-            ),
-          ),
+        await context.push(
+          '/messages/chat/${conversation.id}',
+          extra: conversation,
         );
         // Refresh conversations after returning from chat
         // (state was MessagesLoaded, which buildWhen ignores).

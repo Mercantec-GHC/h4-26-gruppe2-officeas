@@ -9,6 +9,7 @@ class AppScaffold extends StatefulWidget {
   final Widget title;
   final Widget body;
   final bool showDrawer;
+  final bool showBackButtonWhenPossible;
   final bool showAccount;
   final bool showNotifications;
   final bool showLogout;
@@ -21,6 +22,7 @@ class AppScaffold extends StatefulWidget {
     required this.title,
     required this.body,
     this.showDrawer = true,
+    this.showBackButtonWhenPossible = false,
     this.showAccount = true,
     this.showNotifications = true,
     this.showLogout = true,
@@ -35,14 +37,28 @@ class AppScaffold extends StatefulWidget {
 
 class _AppScaffoldState extends State<AppScaffold> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  static const double _appBarActionSlotWidth = 48;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final appBarBackground = isDark ? scheme.surface : scheme.primary;
-    final appBarForeground = isDark ? scheme.onSurface : scheme.onPrimary;
+    final canPop = Navigator.of(context).canPop();
+    final shouldShowBack = widget.showBackButtonWhenPossible && canPop;
+    final customActionsCount = widget.actions?.length ?? 0;
+    final leftBalanceWidth = customActionsCount * _appBarActionSlotWidth;
+
+    final leadingIcon = shouldShowBack
+        ? IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.of(context).maybePop(),
+            tooltip: 'Back',
+          )
+        : widget.showDrawer
+        ? IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            tooltip: 'Open menu',
+          )
+        : null;
 
     final barActions = <Widget>[
       if (widget.actions != null) ...widget.actions!,
@@ -56,13 +72,17 @@ class _AppScaffoldState extends State<AppScaffold> {
       key: _scaffoldKey,
       drawer: widget.showDrawer ? const AppDrawer() : null,
       appBar: AppBar(
-        backgroundColor: appBarBackground,
-        foregroundColor: appBarForeground,
-        leading: widget.showDrawer
-            ? IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                tooltip: 'Open menu',
+        centerTitle: true,
+        leadingWidth: leadingIcon != null
+            ? kToolbarHeight + leftBalanceWidth
+            : null,
+        leading: leadingIcon != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  leadingIcon,
+                  if (leftBalanceWidth > 0) SizedBox(width: leftBalanceWidth),
+                ],
               )
             : null,
         title: widget.title,

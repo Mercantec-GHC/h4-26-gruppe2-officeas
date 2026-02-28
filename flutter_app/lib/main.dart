@@ -97,7 +97,7 @@ class _MyAppState extends State<MyApp> {
         child: BlocBuilder<ThemeCubit, ThemeMode>(
           builder: (context, themeMode) {
             return MaterialApp.router(
-              title: 'OfficeAs',
+              title: 'Office A/S',
               theme: appTheme,
               darkTheme: appDarkTheme,
               themeMode: themeMode,

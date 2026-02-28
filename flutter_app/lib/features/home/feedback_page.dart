@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../../../core/services/departments_service.dart';
 import '../../../core/services/feedback_service.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/widgets/department_dropdown.dart';
 import '../../../data/models/feedback_model.dart';
 import '../../../data/models/shift_model.dart';
@@ -156,11 +156,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Feedback'),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: const Text('Feedback'),
+      showBackButtonWhenPossible: true,
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

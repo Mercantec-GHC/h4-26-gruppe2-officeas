@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/users_remote_datasource.dart';
 import '../../../data/models/user_model.dart';
 
@@ -68,11 +68,8 @@ class _UserApprovalsPageState extends State<UserApprovalsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Account approvals'),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: const Text('Account approvals'),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

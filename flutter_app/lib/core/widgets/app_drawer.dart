@@ -16,6 +16,9 @@ class AppDrawer extends StatelessWidget {
         ? scheme.surfaceContainerHigh
         : scheme.primary;
     final headerForeground = isDark ? scheme.onSurface : scheme.onPrimary;
+    final appBarTitleStyle = Theme.of(
+      context,
+    ).appBarTheme.titleTextStyle?.copyWith(color: headerForeground);
     final user = context.read<AuthBloc>().currentUser;
     final showTickets = isItSupportDepartment(user);
     final showApprovals = canApproveAccounts(user);
@@ -25,17 +28,15 @@ class AppDrawer extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DrawerHeader(
-            decoration: BoxDecoration(color: headerBackground),
-            child: Text(
-              'Office A/S',
-              style: TextStyle(
-                color: headerForeground,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          Container(
+            height: 56,
+            width: double.infinity,
+            color: headerBackground,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text('Office A/S', style: appBarTitleStyle),
           ),
+          const SizedBox(height: 10),
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Home'),
@@ -78,7 +79,7 @@ class AppDrawer extends StatelessWidget {
               title: const Text('Tickets'),
               onTap: () {
                 Navigator.pop(context);
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context).popUntil((route) => route.isFirst);
                 context.go('/tickets');
               },
             ),

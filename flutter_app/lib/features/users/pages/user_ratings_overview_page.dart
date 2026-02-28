@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/departments_service.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/users_remote_datasource.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/models/user_model.dart';
@@ -71,8 +71,7 @@ class _UserRatingsOverviewPageState extends State<UserRatingsOverviewPage> {
 
   List<UserModel> get _filteredAndSortedUsers {
     var list = List<UserModel>.from(_users);
-    if (_selectedDepartmentId != null &&
-        _selectedDepartmentId!.isNotEmpty) {
+    if (_selectedDepartmentId != null && _selectedDepartmentId!.isNotEmpty) {
       list = list
           .where((u) => u.departmentId == _selectedDepartmentId)
           .toList();
@@ -86,37 +85,34 @@ class _UserRatingsOverviewPageState extends State<UserRatingsOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('User ratings'),
-        actions: const [AppTopBarActions()],
-      ),
+    return AppScaffold(
+      title: const Text('User ratings'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _error!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => _load(),
-                          child: const Text('Retry'),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                )
-              : _buildContent(context),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => _load(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : _buildContent(context),
     );
   }
 
@@ -141,32 +137,26 @@ class _UserRatingsOverviewPageState extends State<UserRatingsOverviewPage> {
         ),
         SliverToBoxAdapter(child: const SizedBox(height: 8)),
         _users.isEmpty
-            ? const SliverFillRemaining(
-                child: Center(child: Text('No users')),
-              )
+            ? const SliverFillRemaining(child: Center(child: Text('No users')))
             : _filteredAndSortedUsers.isEmpty
-                ? const SliverFillRemaining(
-                    child: Center(
-                        child: Text('No users in the selected department')),
-                  )
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final user = _filteredAndSortedUsers[index];
-                        return _UserRatingTile(
-                          name: user.name,
-                          departmentName:
-                              user.departmentName ?? 'No department',
-                          rating: user.feedbackRating,
-                        );
-                      },
-                      childCount: _filteredAndSortedUsers.length,
-                    ),
-                  ),
+            ? const SliverFillRemaining(
+                child: Center(
+                  child: Text('No users in the selected department'),
+                ),
+              )
+            : SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final user = _filteredAndSortedUsers[index];
+                  return _UserRatingTile(
+                    name: user.name,
+                    departmentName: user.departmentName ?? 'No department',
+                    rating: user.feedbackRating,
+                  );
+                }, childCount: _filteredAndSortedUsers.length),
+              ),
       ],
     );
   }
-
 }
 
 class _RatingsFilters extends StatelessWidget {
@@ -217,9 +207,7 @@ class _RatingsFilters extends StatelessWidget {
           tooltip: sortAscending
               ? 'Sort: low to high (tap to switch)'
               : 'Sort: high to low (tap to switch)',
-          icon: Icon(
-            sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-          ),
+          icon: Icon(sortAscending ? Icons.arrow_upward : Icons.arrow_downward),
           onPressed: () => onSortChanged(!sortAscending),
         ),
       ],
@@ -253,9 +241,9 @@ class _UserRatingTile extends StatelessWidget {
           ),
           child: Text(
             '$rating/10',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
       ),

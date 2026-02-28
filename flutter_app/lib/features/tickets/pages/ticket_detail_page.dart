@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/widgets/app_topbar_actions.dart';
+import '../../../core/widgets/app_scaffold.dart';
 import '../../../core/utils/department_utils.dart';
 import '../../../core/utils/pick_image_bytes.dart';
 import '../../../core/widgets/auth_image.dart';
@@ -42,19 +42,17 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ticket'),
-        actions: [
-          const AppTopBarActions(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => context.read<TicketsBloc>().add(
-              LoadTicketDetail(widget.ticketId),
-            ),
+    return AppScaffold(
+      title: const Text('Ticket'),
+      showBackButtonWhenPossible: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () => context.read<TicketsBloc>().add(
+            LoadTicketDetail(widget.ticketId),
           ),
-        ],
-      ),
+        ),
+      ],
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
           if (state is TicketsError) {
