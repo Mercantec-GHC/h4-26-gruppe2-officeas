@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../services/departments_service.dart';
-import '../../features/auth/bloc/auth_bloc.dart';
 import '../../data/models/department_model.dart';
 
 /// Reusable dropdown that loads departments from the API and shows them by name.
-/// Requires [AuthBloc] in context (for JWT). Reports selection via [onChanged].
 class DepartmentDropdown extends StatefulWidget {
   /// Currently selected department id (optional).
   final String? value;
@@ -43,15 +40,7 @@ class _DepartmentDropdownState extends State<DepartmentDropdown> {
       _error = null;
     });
     try {
-      final jwt = context.read<AuthBloc>().currentToken;
-
-      if (jwt == null) {
-        if (mounted) setState(() => _error = 'Sign in to load departments');
-        return;
-      }
-
-      final list = await _service.getDepartments(jwt);
-
+      final list = await _service.getDepartments();
       if (mounted) {
         setState(() {
           _departments = list;

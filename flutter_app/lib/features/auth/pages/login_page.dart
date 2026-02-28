@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/department_dropdown.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -21,36 +22,44 @@ class _LoginPageState extends State<LoginPage> {
 
   // For registration
   final _nameController = TextEditingController();
-  final _departmentIdController = TextEditingController();
+  String? _selectedDepartmentId;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _nameController.dispose();
-    _departmentIdController.dispose();
     super.dispose();
   }
 
   void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      if (_isLogin) {
-        context.read<AuthBloc>().add(
-          LoginRequested(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          ),
-        );
-      } else {
-        context.read<AuthBloc>().add(
-          RegisterRequested(
-            name: _nameController.text.trim(),
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-            departmentId: _departmentIdController.text.trim(),
-          ),
-        );
-      }
+    if (!_formKey.currentState!.validate()) return;
+
+    if (!_isLogin &&
+        (_selectedDepartmentId == null || _selectedDepartmentId!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a department')),
+      );
+
+      return;
+    }
+
+    if (_isLogin) {
+      context.read<AuthBloc>().add(
+        LoginRequested(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
+    } else {
+      context.read<AuthBloc>().add(
+        RegisterRequested(
+          name: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          departmentId: _selectedDepartmentId ?? '',
+        ),
+      );
     }
   }
 
@@ -302,16 +311,20 @@ class _LoginPageState extends State<LoginPage> {
               ),
               if (!_isLogin) ...[
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _departmentIdController,
-                  decoration: _inputDecoration(
-                    context,
-                    'Department ID',
-                    Icons.business,
+                DepartmentDropdown(
+                  label: 'Department',
+                  value: _selectedDepartmentId,
+                  onChanged: (v) => setState(() => _selectedDepartmentId = v),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.business),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.surfaceContainerHighest
+                        : Colors.grey.shade50,
                   ),
-                  validator: (v) => v == null || v.isEmpty
-                      ? 'Please enter department ID'
-                      : null,
                 ),
                 const SizedBox(height: 8),
                 Text(

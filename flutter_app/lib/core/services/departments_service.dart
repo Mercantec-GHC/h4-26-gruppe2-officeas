@@ -29,17 +29,17 @@ class DepartmentsService {
         .toList();
   }
 
-  Future<List<DepartmentModel>> getDepartments(String jwt) async {
+  /// Fetches all departments. GET /departments does not require auth.
+  Future<List<DepartmentModel>> getDepartments() async {
     final response = await http.get(
       Uri.parse('$_baseUrl/departments'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $jwt',
-      },
+      headers: {'Content-Type': 'application/json'},
     );
+
     if (response.statusCode != 200) {
       throw Exception('Failed to load departments: ${response.statusCode}');
     }
+
     final List data = jsonDecode(response.body);
     return data.map((e) => DepartmentModel.fromJson(e)).toList();
   }

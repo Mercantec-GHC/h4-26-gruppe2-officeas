@@ -470,8 +470,6 @@ class _AccountPageState extends State<AccountPage> {
               user != null ? _formatDate(user.createdAt) : '',
             ),
             const SizedBox(height: 18),
-            Text('Actions', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               children: [
@@ -479,11 +477,6 @@ class _AccountPageState extends State<AccountPage> {
                   onPressed: _changePassword,
                   icon: const Icon(Icons.key),
                   label: const Text('Change password'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.history),
-                  label: const Text('Activity'),
                 ),
               ],
             ),

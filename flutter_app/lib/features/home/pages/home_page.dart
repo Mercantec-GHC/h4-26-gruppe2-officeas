@@ -178,13 +178,6 @@ class _HomePageState extends State<HomePage> {
         'Give feedback',
         () => context.push('/feedback'),
       ),
-      () => _actionCard(
-        context,
-        Icons.settings,
-        'Settings',
-        'App settings',
-        () {},
-      ),
     ];
 
     // Responsive dashboard layout

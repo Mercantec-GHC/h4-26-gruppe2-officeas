@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/services/departments_service.dart';
 import '../../../core/widgets/app_scaffold.dart';
 import '../../../data/datasources/users_remote_datasource.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/models/user_model.dart';
-import '../../auth/bloc/auth_bloc.dart';
 
 /// Overview of users and their feedback ratings. Visible only to Ledelse and HR.
 /// Supports filtering by department and sorting by rating (ascending/descending).
@@ -44,15 +42,12 @@ class _UserRatingsOverviewPageState extends State<UserRatingsOverviewPage> {
       _error = null;
     });
     try {
-      final jwt = context.read<AuthBloc>().currentToken;
       final userList = await _usersDataSource.getUsers();
       List<DepartmentModel> deptList = [];
-      if (jwt != null && jwt.isNotEmpty) {
-        try {
-          deptList = await _departmentsService.getDepartments(jwt);
-        } catch (_) {
-          // Continue without department filter
-        }
+      try {
+        deptList = await _departmentsService.getDepartments();
+      } catch (_) {
+        // Continue without department filter
       }
       if (!mounted) return;
       setState(() {
