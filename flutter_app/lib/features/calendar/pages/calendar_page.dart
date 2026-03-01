@@ -281,6 +281,7 @@ class _CalendarPageState extends State<CalendarPage> {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 500),
                       child: Container(
+                        clipBehavior: Clip.hardEdge,
                         padding: const EdgeInsets.all(8.0),
                         decoration: BoxDecoration(
                           color: Theme.of(context).brightness == Brightness.dark
@@ -300,6 +301,11 @@ class _CalendarPageState extends State<CalendarPage> {
                           firstDay: DateTime.utc(2020, 1, 1),
                           lastDay: DateTime.utc(2030, 12, 31),
                           focusedDay: _focusedDate,
+                          sixWeekMonthsEnforced: true,
+                          calendarBuilders: CalendarBuilders(
+                            outsideBuilder: (context, day, focusedDay) =>
+                                const SizedBox.shrink(),
+                          ),
                           selectedDayPredicate: (day) {
                             if (_startDate == null && _endDate == null) {
                               return false;
