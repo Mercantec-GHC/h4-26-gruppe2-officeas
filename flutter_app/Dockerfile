@@ -23,6 +23,7 @@ COPY analysis_options.yaml ./
 
 # Build for web
 RUN flutter build web --release \
+    --pwa-strategy=none \
     --dart-define=APP_ENV=${APP_ENV} \
     --dart-define=API_BASE_URL=${API_BASE_URL}
 

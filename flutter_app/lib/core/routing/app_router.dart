@@ -135,6 +135,9 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
           if (ticketId == null || ticketId.isEmpty) {
             return const ItSupportGuard(child: TicketListPage());
           }
+          if (ticketId == 'new') {
+            return const CreateTicketPage();
+          }
           return ItSupportGuard(child: TicketDetailPage(ticketId: ticketId));
         },
       ),
