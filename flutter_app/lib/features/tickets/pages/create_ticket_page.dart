@@ -17,6 +17,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  bool _submitInProgress = false;
 
   @override
   void dispose() {
@@ -41,6 +42,10 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
       return;
     }
 
+    setState(() {
+      _submitInProgress = true;
+    });
+
     context.read<TicketsBloc>().add(
       CreateTicket(
         title: _titleController.text.trim(),
@@ -57,7 +62,12 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
       showBackButtonWhenPossible: true,
       body: BlocConsumer<TicketsBloc, TicketsState>(
         listener: (context, state) {
+          if (!_submitInProgress) return;
+
           if (state is TicketsError) {
+            setState(() {
+              _submitInProgress = false;
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
@@ -66,6 +76,9 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
             );
           }
           if (state is TicketCreateSuccess) {
+            setState(() {
+              _submitInProgress = false;
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Ticket created'),
@@ -76,7 +89,7 @@ class _CreateTicketPageState extends State<CreateTicketPage> {
           }
         },
         builder: (context, state) {
-          final loading = state is TicketsLoading;
+          final loading = _submitInProgress && state is TicketsLoading;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Form(

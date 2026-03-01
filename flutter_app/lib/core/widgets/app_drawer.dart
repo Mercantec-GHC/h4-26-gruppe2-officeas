@@ -85,7 +85,7 @@ class AppDrawer extends StatelessWidget {
             onTap: () {
               final router = GoRouter.of(context);
               Navigator.pop(context);
-              router.goNamed('ticketCreate');
+              router.goNamed('ticketCreateStandalone');
             },
           ),
           if (showApprovals)

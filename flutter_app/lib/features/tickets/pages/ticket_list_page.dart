@@ -361,7 +361,7 @@ class _TicketListBodyState extends State<_TicketListBody> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/tickets/new'),
+        onPressed: () => context.push('/create-ticket'),
         tooltip: 'Create ticket',
         child: const Icon(Icons.add),
       ),

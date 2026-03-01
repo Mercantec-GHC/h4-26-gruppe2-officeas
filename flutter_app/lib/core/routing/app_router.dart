@@ -35,6 +35,7 @@ bool _isValidPath(String path) {
   const allowed = [
     '/account',
     '/feedback',
+    '/create-ticket',
     '/messages',
     '/calendar',
     '/notifications',
@@ -94,6 +95,11 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
       GoRoute(path: '/account', builder: (_, __) => const AccountPage()),
       GoRoute(path: '/feedback', builder: (_, __) => const FeedbackPage()),
       GoRoute(
+        path: '/create-ticket',
+        name: 'ticketCreateStandalone',
+        builder: (_, __) => const CreateTicketPage(),
+      ),
+      GoRoute(
         path: '/messages',
         builder: (_, __) => const _MainNavShell(initialIndex: 1),
       ),
@@ -120,13 +126,9 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
         builder: (_, __) => const _MainNavShell(initialIndex: 3),
       ),
       GoRoute(
-        path: '/tickets',
-        builder: (_, __) => const ItSupportGuard(child: TicketListPage()),
-      ),
-      GoRoute(
         path: '/tickets/new',
         name: 'ticketCreate',
-        builder: (_, __) => const CreateTicketPage(),
+        redirect: (_, __) => '/create-ticket',
       ),
       GoRoute(
         path: '/tickets/:ticketId',
@@ -136,10 +138,14 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
             return const ItSupportGuard(child: TicketListPage());
           }
           if (ticketId == 'new') {
-            return const CreateTicketPage();
+            return const SizedBox.shrink();
           }
           return ItSupportGuard(child: TicketDetailPage(ticketId: ticketId));
         },
+      ),
+      GoRoute(
+        path: '/tickets',
+        builder: (_, __) => const ItSupportGuard(child: TicketListPage()),
       ),
       GoRoute(
         path: '/users/approvals',
