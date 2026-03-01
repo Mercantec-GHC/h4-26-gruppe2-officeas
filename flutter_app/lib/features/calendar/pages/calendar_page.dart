@@ -344,6 +344,7 @@ class _CalendarPageState extends State<CalendarPage> {
                               _focusedDate = focusedDay;
                             },
                             calendarStyle: CalendarStyle(
+                              outsideDaysVisible: false,
                               defaultTextStyle: const TextStyle(fontSize: 12),
                               weekendTextStyle: const TextStyle(
                                 fontSize: 12,
