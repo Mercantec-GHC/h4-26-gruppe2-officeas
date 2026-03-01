@@ -275,131 +275,127 @@ class _CalendarPageState extends State<CalendarPage> {
           : Column(
               children: [
                 // Fixed Calendar at top
-                Flexible(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 500),
-                        child: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 500),
+                      child: Container(
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.surfaceContainerHighest
+                              : Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(
                             color:
                                 Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerHighest
-                                : Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? Theme.of(context).colorScheme.outlineVariant
-                                  : Colors.blue.shade200,
+                                ? Theme.of(context).colorScheme.outlineVariant
+                                : Colors.blue.shade200,
+                          ),
+                        ),
+                        child: TableCalendar(
+                          firstDay: DateTime.utc(2020, 1, 1),
+                          lastDay: DateTime.utc(2030, 12, 31),
+                          focusedDay: _focusedDate,
+                          selectedDayPredicate: (day) {
+                            if (_startDate == null && _endDate == null) {
+                              return false;
+                            }
+                            if (_startDate != null && _endDate == null) {
+                              return isSameDay(_startDate, day);
+                            }
+                            // If both dates are set, highlight range
+                            return day.isAfter(_startDate!) &&
+                                    day.isBefore(_endDate!) ||
+                                isSameDay(_startDate, day) ||
+                                isSameDay(_endDate, day);
+                          },
+                          eventLoader: _getShiftsForDate,
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              if (_startDate == null && _endDate == null) {
+                                // First selection - set start date
+                                _startDate = selectedDay;
+                              } else if (_startDate != null &&
+                                  _endDate == null) {
+                                // Second selection - set end date
+                                if (selectedDay.isBefore(_startDate!)) {
+                                  // If selected date is before start, swap them
+                                  _endDate = _startDate;
+                                  _startDate = selectedDay;
+                                } else {
+                                  _endDate = selectedDay;
+                                }
+                              } else {
+                                // Both dates set - reset and start over
+                                _startDate = selectedDay;
+                                _endDate = null;
+                              }
+                              _focusedDate = focusedDay;
+                            });
+                          },
+                          onPageChanged: (focusedDay) {
+                            _focusedDate = focusedDay;
+                          },
+                          calendarStyle: CalendarStyle(
+                            outsideDaysVisible: false,
+                            defaultTextStyle: const TextStyle(fontSize: 12),
+                            weekendTextStyle: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.red,
+                            ),
+                            selectedDecoration: BoxDecoration(
+                              color: isDark
+                                  ? scheme.primary
+                                  : Colors.blue.shade700,
+                              shape: BoxShape.circle,
+                            ),
+                            todayDecoration: BoxDecoration(
+                              color: isDark
+                                  ? scheme.tertiary
+                                  : Colors.orange.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            markerDecoration: BoxDecoration(
+                              color: isDark
+                                  ? scheme.primary.withValues(alpha: 0.8)
+                                  : Colors.blue.shade400,
+                              shape: BoxShape.circle,
+                            ),
+                            outsideTextStyle: TextStyle(
+                              fontSize: 12,
+                              color: mutedText,
                             ),
                           ),
-                          child: TableCalendar(
-                            firstDay: DateTime.utc(2020, 1, 1),
-                            lastDay: DateTime.utc(2030, 12, 31),
-                            focusedDay: _focusedDate,
-                            selectedDayPredicate: (day) {
-                              if (_startDate == null && _endDate == null) {
-                                return false;
-                              }
-                              if (_startDate != null && _endDate == null) {
-                                return isSameDay(_startDate, day);
-                              }
-                              // If both dates are set, highlight range
-                              return day.isAfter(_startDate!) &&
-                                      day.isBefore(_endDate!) ||
-                                  isSameDay(_startDate, day) ||
-                                  isSameDay(_endDate, day);
-                            },
-                            eventLoader: _getShiftsForDate,
-                            onDaySelected: (selectedDay, focusedDay) {
-                              setState(() {
-                                if (_startDate == null && _endDate == null) {
-                                  // First selection - set start date
-                                  _startDate = selectedDay;
-                                } else if (_startDate != null &&
-                                    _endDate == null) {
-                                  // Second selection - set end date
-                                  if (selectedDay.isBefore(_startDate!)) {
-                                    // If selected date is before start, swap them
-                                    _endDate = _startDate;
-                                    _startDate = selectedDay;
-                                  } else {
-                                    _endDate = selectedDay;
-                                  }
-                                } else {
-                                  // Both dates set - reset and start over
-                                  _startDate = selectedDay;
-                                  _endDate = null;
-                                }
-                                _focusedDate = focusedDay;
-                              });
-                            },
-                            onPageChanged: (focusedDay) {
-                              _focusedDate = focusedDay;
-                            },
-                            calendarStyle: CalendarStyle(
-                              outsideDaysVisible: false,
-                              defaultTextStyle: const TextStyle(fontSize: 12),
-                              weekendTextStyle: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.red,
-                              ),
-                              selectedDecoration: BoxDecoration(
-                                color: isDark
-                                    ? scheme.primary
-                                    : Colors.blue.shade700,
-                                shape: BoxShape.circle,
-                              ),
-                              todayDecoration: BoxDecoration(
-                                color: isDark
-                                    ? scheme.tertiary
-                                    : Colors.orange.shade300,
-                                shape: BoxShape.circle,
-                              ),
-                              markerDecoration: BoxDecoration(
-                                color: isDark
-                                    ? scheme.primary.withValues(alpha: 0.8)
-                                    : Colors.blue.shade400,
-                                shape: BoxShape.circle,
-                              ),
-                              outsideTextStyle: TextStyle(
-                                fontSize: 12,
-                                color: mutedText,
-                              ),
+                          headerStyle: HeaderStyle(
+                            formatButtonVisible: false,
+                            titleCentered: true,
+                            titleTextStyle: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? scheme.primary
+                                  : Colors.blue.shade700,
                             ),
-                            headerStyle: HeaderStyle(
-                              formatButtonVisible: false,
-                              titleCentered: true,
-                              titleTextStyle: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: isDark
-                                    ? scheme.primary
-                                    : Colors.blue.shade700,
-                              ),
-                              leftChevronIcon: Icon(
-                                Icons.arrow_left,
-                                size: 20,
-                                color: isDark ? scheme.primary : Colors.blue,
-                              ),
-                              rightChevronIcon: Icon(
-                                Icons.arrow_right,
-                                size: 20,
-                                color: isDark ? scheme.primary : Colors.blue,
-                              ),
+                            leftChevronIcon: Icon(
+                              Icons.arrow_left,
+                              size: 20,
+                              color: isDark ? scheme.primary : Colors.blue,
                             ),
-                            daysOfWeekStyle: const DaysOfWeekStyle(
-                              weekdayStyle: TextStyle(fontSize: 11),
-                              weekendStyle: TextStyle(
-                                fontSize: 11,
-                                color: Colors.red,
-                              ),
+                            rightChevronIcon: Icon(
+                              Icons.arrow_right,
+                              size: 20,
+                              color: isDark ? scheme.primary : Colors.blue,
+                            ),
+                          ),
+                          daysOfWeekStyle: const DaysOfWeekStyle(
+                            weekdayStyle: TextStyle(fontSize: 11),
+                            weekendStyle: TextStyle(
+                              fontSize: 11,
+                              color: Colors.red,
                             ),
                           ),
                         ),
@@ -408,7 +404,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   ),
                 ),
                 // Scrollable Selected Dates and Shifts Section
-                Flexible(
+                Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(8.0),
                     child: Center(
@@ -938,25 +934,24 @@ class _CalendarPageState extends State<CalendarPage> {
                             Icon(
                               Icons.apartment,
                               size: 12,
-                              color: Theme.of(
-                                context,
-                              ).textTheme.bodyMedium?.color?.withValues(
-                                alpha: 0.72,
-                              ),
+                              color: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.color
+                                  ?.withValues(alpha: 0.72),
                             ),
                             const SizedBox(width: 4.0),
                             Expanded(
                               child: Text(
                                 shift.userDepartmentName!,
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.labelSmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.color
-                                      ?.withValues(alpha: 0.72),
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.color
+                                          ?.withValues(alpha: 0.72),
+                                    ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
