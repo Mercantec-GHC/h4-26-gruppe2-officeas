@@ -8,6 +8,12 @@ import '../../features/auth/bloc/auth_event.dart';
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
 
+  void _goFromDrawer(BuildContext context, String path) {
+    final router = GoRouter.of(context);
+    Navigator.pop(context);
+    router.go(path);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -41,36 +47,28 @@ class AppDrawer extends StatelessWidget {
             leading: const Icon(Icons.home),
             title: const Text('Home'),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-              context.go('/');
+              _goFromDrawer(context, '/');
             },
           ),
           ListTile(
             leading: const Icon(Icons.chat_bubble_outline),
             title: const Text('Messages'),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-              context.go('/messages');
+              _goFromDrawer(context, '/messages');
             },
           ),
           ListTile(
             leading: const Icon(Icons.calendar_today),
             title: const Text('Calendar'),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-              context.go('/calendar');
+              _goFromDrawer(context, '/calendar');
             },
           ),
           ListTile(
             leading: const Icon(Icons.notifications_none),
             title: const Text('Notifications'),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-              context.go('/notifications');
+              _goFromDrawer(context, '/notifications');
             },
           ),
           if (showTickets)
@@ -78,18 +76,14 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.confirmation_number),
               title: const Text('Tickets'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                context.go('/tickets');
+                _goFromDrawer(context, '/tickets');
               },
             ),
           ListTile(
             leading: const Icon(Icons.add_circle_outline),
             title: const Text('Create ticket'),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.of(context).popUntil((route) => route.isFirst);
-              context.go('/tickets/new');
+              _goFromDrawer(context, '/tickets/new');
             },
           ),
           if (showApprovals)
@@ -97,9 +91,7 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.verified_user),
               title: const Text('Approve accounts'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                context.go('/users/approvals');
+                _goFromDrawer(context, '/users/approvals');
               },
             ),
           if (showApprovals)
@@ -107,9 +99,7 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.star_outline),
               title: const Text('User ratings'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                context.go('/users/ratings');
+                _goFromDrawer(context, '/users/ratings');
               },
             ),
           if (showAbsenceApprovals)
@@ -117,9 +107,7 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.fact_check_outlined),
               title: const Text('Approve absences'),
               onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).popUntil((route) => route.isFirst);
-                context.go('/absence/approvals');
+                _goFromDrawer(context, '/absence/approvals');
               },
             ),
           const Divider(),
