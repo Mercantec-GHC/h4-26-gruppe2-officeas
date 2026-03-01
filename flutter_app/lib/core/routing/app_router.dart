@@ -125,6 +125,7 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
       ),
       GoRoute(
         path: '/tickets/new',
+        name: 'ticketCreate',
         builder: (_, __) => const CreateTicketPage(),
       ),
       GoRoute(

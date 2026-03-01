@@ -83,7 +83,9 @@ class AppDrawer extends StatelessWidget {
             leading: const Icon(Icons.add_circle_outline),
             title: const Text('Create ticket'),
             onTap: () {
-              _goFromDrawer(context, '/tickets/new');
+              final router = GoRouter.of(context);
+              Navigator.pop(context);
+              router.goNamed('ticketCreate');
             },
           ),
           if (showApprovals)
