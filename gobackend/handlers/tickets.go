@@ -229,7 +229,7 @@ func (h Tickets) Update(w http.ResponseWriter, r *http.Request) {
 		if t.Title != "" {
 			updates["title"] = t.Title
 		}
-		
+
 		if t.Description != "" {
 			updates["description"] = t.Description
 		}
@@ -454,7 +454,7 @@ func (h Tickets) ServeTicketImage(w http.ResponseWriter, r *http.Request) {
 // RegisterTickets adds ticket routes. More specific /{id}/image routes are registered before /{id} so they match first.
 func RegisterTickets(router *mux.Router, h Tickets, prefix string) {
 	router.Handle(prefix, chainWithMiddlewares(h.List, RequirePermission(TicketView))).Methods("GET")
-	router.Handle(prefix, chainWithMiddlewares(h.Create, RequirePermission(TicketCreate))).Methods("POST")
+	router.HandleFunc(prefix, h.Create).Methods("POST")
 	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.ServeTicketImage, RequireTicketAccess())).Methods("GET")
 	router.Handle(prefix+"/{id}/image", chainWithMiddlewares(h.UploadTicketImage, RequireTicketAccess())).Methods("PUT")
 	router.Handle(prefix+"/{id}", chainWithMiddlewares(h.GetByID, RequireTicketAccess())).Methods("GET")

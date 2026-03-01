@@ -219,4 +219,34 @@ func TestTickets_Create(t *testing.T) {
 			t.Errorf("got %+v", got)
 		}
 	})
+
+	t.Run("user from unmapped department can create ticket", func(t *testing.T) {
+		unknownDept := models.Department{Id: uuid.New(), Name: "Lager"}
+		if err := db.Create(&unknownDept).Error; err != nil {
+			t.Fatalf("create department: %v", err)
+		}
+
+		unknownDeptUser := models.User{
+			Id:           uuid.New(),
+			Name:         "Unknown Dept User",
+			Email:        "unknown-dept@t.com",
+			PasswordHash: "x",
+			DepartmentId: unknownDept.Id,
+		}
+		unknownDeptUser.Department = unknownDept
+		if err := db.Create(&unknownDeptUser).Error; err != nil {
+			t.Fatalf("create user: %v", err)
+		}
+
+		body := []byte(`{"title":"Ticket from unknown dept","description":"Description"}`)
+		req := httptest.NewRequest(http.MethodPost, "/tickets", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = requestWithCurrentUser(req, &unknownDeptUser)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusCreated {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusCreated)
+		}
+	})
 }
