@@ -20,7 +20,6 @@ import '../../features/users/pages/user_ratings_overview_page.dart';
 import '../../data/models/messaging_models.dart';
 import '../di/injection.dart';
 import '../utils/department_utils.dart';
-import '../widgets/it_support_guard.dart';
 import '../../domain/repositories/shift_repository.dart';
 import '../../domain/repositories/absence_request_repository.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
@@ -135,18 +134,15 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
         builder: (_, state) {
           final ticketId = state.pathParameters['ticketId'];
           if (ticketId == null || ticketId.isEmpty) {
-            return const ItSupportGuard(child: TicketListPage());
+            return const TicketListPage();
           }
           if (ticketId == 'new') {
             return const SizedBox.shrink();
           }
-          return ItSupportGuard(child: TicketDetailPage(ticketId: ticketId));
+          return TicketDetailPage(ticketId: ticketId);
         },
       ),
-      GoRoute(
-        path: '/tickets',
-        builder: (_, __) => const ItSupportGuard(child: TicketListPage()),
-      ),
+      GoRoute(path: '/tickets', builder: (_, __) => const TicketListPage()),
       GoRoute(
         path: '/users/approvals',
         builder: (_, __) => const UserApprovalsPage(),

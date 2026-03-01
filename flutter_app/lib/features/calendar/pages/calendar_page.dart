@@ -272,28 +272,24 @@ class _CalendarPageState extends State<CalendarPage> {
       ],
       body: _isLoading && _shifts.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Fixed Calendar at top
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 500),
-                      child: Container(
-                        clipBehavior: Clip.hardEdge,
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    children: [
+                      // Calendar card
+                      Container(
                         padding: const EdgeInsets.all(8.0),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest
+                          color: isDark
+                              ? scheme.surfaceContainerHighest
                               : Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(8.0),
                           border: Border.all(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.outlineVariant
+                            color: isDark
+                                ? scheme.outlineVariant
                                 : Colors.blue.shade200,
                           ),
                         ),
@@ -301,51 +297,6 @@ class _CalendarPageState extends State<CalendarPage> {
                           firstDay: DateTime.utc(2020, 1, 1),
                           lastDay: DateTime.utc(2030, 12, 31),
                           focusedDay: _focusedDate,
-                          sixWeekMonthsEnforced: true,
-                          calendarBuilders: CalendarBuilders(
-                            outsideBuilder: (context, day, focusedDay) =>
-                                const SizedBox.shrink(),
-                          ),
-                          selectedDayPredicate: (day) {
-                            if (_startDate == null && _endDate == null) {
-                              return false;
-                            }
-                            if (_startDate != null && _endDate == null) {
-                              return isSameDay(_startDate, day);
-                            }
-                            // If both dates are set, highlight range
-                            return day.isAfter(_startDate!) &&
-                                    day.isBefore(_endDate!) ||
-                                isSameDay(_startDate, day) ||
-                                isSameDay(_endDate, day);
-                          },
-                          eventLoader: _getShiftsForDate,
-                          onDaySelected: (selectedDay, focusedDay) {
-                            setState(() {
-                              if (_startDate == null && _endDate == null) {
-                                // First selection - set start date
-                                _startDate = selectedDay;
-                              } else if (_startDate != null &&
-                                  _endDate == null) {
-                                // Second selection - set end date
-                                if (selectedDay.isBefore(_startDate!)) {
-                                  // If selected date is before start, swap them
-                                  _endDate = _startDate;
-                                  _startDate = selectedDay;
-                                } else {
-                                  _endDate = selectedDay;
-                                }
-                              } else {
-                                // Both dates set - reset and start over
-                                _startDate = selectedDay;
-                                _endDate = null;
-                              }
-                              _focusedDate = focusedDay;
-                            });
-                          },
-                          onPageChanged: (focusedDay) {
-                            _focusedDate = focusedDay;
-                          },
                           calendarStyle: CalendarStyle(
                             outsideDaysVisible: false,
                             defaultTextStyle: const TextStyle(fontSize: 12),
@@ -404,326 +355,324 @@ class _CalendarPageState extends State<CalendarPage> {
                               color: Colors.red,
                             ),
                           ),
+                          selectedDayPredicate: (day) {
+                            if (_startDate == null && _endDate == null) {
+                              return false;
+                            }
+                            if (_startDate != null && _endDate == null) {
+                              return isSameDay(_startDate, day);
+                            }
+                            return day.isAfter(_startDate!) &&
+                                    day.isBefore(_endDate!) ||
+                                isSameDay(_startDate, day) ||
+                                isSameDay(_endDate, day);
+                          },
+                          eventLoader: _getShiftsForDate,
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              if (_startDate == null && _endDate == null) {
+                                _startDate = selectedDay;
+                              } else if (_startDate != null &&
+                                  _endDate == null) {
+                                if (selectedDay.isBefore(_startDate!)) {
+                                  _endDate = _startDate;
+                                  _startDate = selectedDay;
+                                } else {
+                                  _endDate = selectedDay;
+                                }
+                              } else {
+                                _startDate = selectedDay;
+                                _endDate = null;
+                              }
+                              _focusedDate = focusedDay;
+                            });
+                          },
+                          onPageChanged: (focusedDay) {
+                            _focusedDate = focusedDay;
+                          },
                         ),
                       ),
-                    ),
-                  ),
-                ),
-                // Scrollable Selected Dates and Shifts Section
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 500),
+                      const SizedBox(height: 4.0),
+                      // Selected Date Range Info
+                      Container(
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? scheme.surfaceContainerHighest
+                              : Colors.green.shade50,
+                          border: Border.all(
+                            color: isDark
+                                ? scheme.outlineVariant
+                                : Colors.green.shade300,
+                          ),
+                          borderRadius: BorderRadius.circular(6.0),
+                        ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 4.0),
-                            // Selected Date Range Info
-                            Container(
-                              padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? scheme.surfaceContainerHighest
-                                    : Colors.green.shade50,
-                                border: Border.all(
-                                  color: isDark
-                                      ? scheme.outlineVariant
-                                      : Colors.green.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(6.0),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _startDate == null && _endDate == null
-                                        ? 'Select a date range'
-                                        : _startDate != null && _endDate == null
-                                        ? 'Start date selected, select end date'
-                                        : 'Date Range Selected:',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  if (_startDate != null) ...[
-                                    const SizedBox(height: 6.0),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today,
-                                          size: 14,
-                                          color: isDark
-                                              ? scheme.primary
-                                              : Colors.green,
-                                        ),
-                                        const SizedBox(width: 6.0),
-                                        Expanded(
-                                          child: Text(
-                                            'Start: ${DateFormat('MMM d, yyyy').format(_startDate!)}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall
-                                                ?.copyWith(
-                                                  color: isDark
-                                                      ? scheme.primary
-                                                      : Colors.green.shade700,
-                                                ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  if (_endDate != null) ...[
-                                    const SizedBox(height: 4.0),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today,
-                                          size: 14,
-                                          color: isDark
-                                              ? scheme.primary
-                                              : Colors.blue,
-                                        ),
-                                        const SizedBox(width: 6.0),
-                                        Expanded(
-                                          child: Text(
-                                            'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall
-                                                ?.copyWith(
-                                                  color: isDark
-                                                      ? scheme.primary
-                                                      : Colors.blue.shade700,
-                                                ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6.0),
-                                    Text(
-                                      'Duration: ${_endDate!.difference(_startDate!).inDays + 1} days',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: isDark
-                                                ? scheme.primary
-                                                : Colors.purple.shade700,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                    ),
-                                  ],
-                                  if (_startDate != null &&
-                                      _endDate != null) ...[
-                                    const SizedBox(height: 8.0),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: () {
-                                          setState(() {
-                                            _startDate = null;
-                                            _endDate = null;
-                                          });
-                                        },
-                                        icon: const Icon(Icons.clear, size: 16),
-                                        label: const Text('Clear Range'),
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 6.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6.0),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: _showAbsenceRequestDialog,
-                                        icon: const Icon(
-                                          Icons.event_busy,
-                                          size: 16,
-                                        ),
-                                        label: const Text('Request Absence'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              Colors.orange.shade600,
-                                          foregroundColor: isDark
-                                              ? scheme.onTertiary
-                                              : Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 6.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    if (isLedelseDepartment(
-                                      context.read<AuthBloc>().currentUser,
-                                    )) ...[
-                                      const SizedBox(height: 6.0),
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ElevatedButton.icon(
-                                          onPressed: _isGenerating
-                                              ? null
-                                              : _generateShifts,
-                                          icon: _isGenerating
-                                              ? const SizedBox(
-                                                  width: 16,
-                                                  height: 16,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                      ),
-                                                )
-                                              : const Icon(
-                                                  Icons.add_circle_outline,
-                                                  size: 16,
-                                                ),
-                                          label: Text(
-                                            _isGenerating
-                                                ? 'Creating shifts…'
-                                                : 'Create shifts',
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: scheme.primary,
-                                            foregroundColor: isDark
-                                                ? scheme.onPrimary
-                                                : Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 6.0,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ],
-                              ),
+                            Text(
+                              _startDate == null && _endDate == null
+                                  ? 'Select a date range'
+                                  : _startDate != null && _endDate == null
+                                  ? 'Start date selected, select end date'
+                                  : 'Date Range Selected:',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
-                            // Display shifts for selected date range
-                            const SizedBox(height: 12.0),
-                            if (_startDate != null && _endDate != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(8.0),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? scheme.surfaceContainerHighest
-                                      : Colors.purple.shade50,
-                                  border: Border.all(
+                            if (_startDate != null) ...[
+                              const SizedBox(height: 6.0),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 14,
                                     color: isDark
-                                        ? scheme.outlineVariant
-                                        : Colors.purple.shade300,
+                                        ? scheme.primary
+                                        : Colors.green,
                                   ),
-                                  borderRadius: BorderRadius.circular(6.0),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Shifts in selected period:',
+                                  const SizedBox(width: 6.0),
+                                  Expanded(
+                                    child: Text(
+                                      'Start: ${DateFormat('MMM d, yyyy').format(_startDate!)}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelSmall
                                           ?.copyWith(
-                                            fontWeight: FontWeight.bold,
                                             color: isDark
                                                 ? scheme.primary
-                                                : Colors.purple.shade700,
+                                                : Colors.green.shade700,
                                           ),
                                     ),
-                                    const SizedBox(height: 8.0),
-                                    _buildShiftsList(
-                                      _getShiftsForRange(
-                                        _startDate!,
-                                        _endDate!,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ] else if (_startDate != null &&
-                                _endDate == null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(8.0),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? scheme.surfaceContainerHighest
-                                      : Colors.amber.shade50,
-                                  border: Border.all(
-                                    color: isDark
-                                        ? scheme.outlineVariant
-                                        : Colors.amber.shade300,
                                   ),
-                                  borderRadius: BorderRadius.circular(6.0),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Shifts on ${DateFormat('MMM d, yyyy').format(_startDate!)}:',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: isDark
-                                                ? scheme.primary
-                                                : Colors.amber.shade700,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 8.0),
-                                    _buildShiftsList(
-                                      _getShiftsForDate(_startDate!),
-                                    ),
-                                  ],
-                                ),
+                                ],
                               ),
                             ],
-                            // Display your absence requests
-                            const SizedBox(height: 12.0),
-                            Container(
-                              padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? scheme.surfaceContainerHighest
-                                    : Colors.red.shade50,
-                                border: Border.all(
-                                  color: isDark
-                                      ? scheme.outlineVariant
-                                      : Colors.red.shade300,
-                                ),
-                                borderRadius: BorderRadius.circular(6.0),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            if (_endDate != null) ...[
+                              const SizedBox(height: 4.0),
+                              Row(
                                 children: [
-                                  Text(
-                                    'Your Absence Requests:',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: isDark
-                                              ? scheme.primary
-                                              : Colors.red.shade700,
-                                        ),
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 14,
+                                    color: isDark
+                                        ? scheme.primary
+                                        : Colors.blue,
                                   ),
-                                  const SizedBox(height: 8.0),
-                                  _buildAbsenceRequestsList(),
+                                  const SizedBox(width: 6.0),
+                                  Expanded(
+                                    child: Text(
+                                      'End: ${DateFormat('MMM d, yyyy').format(_endDate!)}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            color: isDark
+                                                ? scheme.primary
+                                                : Colors.blue.shade700,
+                                          ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
+                              const SizedBox(height: 6.0),
+                              Text(
+                                'Duration: ${_endDate!.difference(_startDate!).inDays + 1} days',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: isDark
+                                          ? scheme.primary
+                                          : Colors.purple.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ],
+                            if (_startDate != null && _endDate != null) ...[
+                              const SizedBox(height: 8.0),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _startDate = null;
+                                      _endDate = null;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  label: const Text('Clear Range'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 6.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6.0),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _showAbsenceRequestDialog,
+                                  icon: const Icon(Icons.event_busy, size: 16),
+                                  label: const Text('Request Absence'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange.shade600,
+                                    foregroundColor: isDark
+                                        ? scheme.onTertiary
+                                        : Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 6.0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (isLedelseDepartment(
+                                context.read<AuthBloc>().currentUser,
+                              )) ...[
+                                const SizedBox(height: 6.0),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isGenerating
+                                        ? null
+                                        : _generateShifts,
+                                    icon: _isGenerating
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.add_circle_outline,
+                                            size: 16,
+                                          ),
+                                    label: Text(
+                                      _isGenerating
+                                          ? 'Creating shifts…'
+                                          : 'Create shifts',
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: scheme.primary,
+                                      foregroundColor: isDark
+                                          ? scheme.onPrimary
+                                          : Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6.0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ],
                         ),
                       ),
-                    ),
+                      // Display shifts for selected date range
+                      const SizedBox(height: 12.0),
+                      if (_startDate != null && _endDate != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? scheme.surfaceContainerHighest
+                                : Colors.purple.shade50,
+                            border: Border.all(
+                              color: isDark
+                                  ? scheme.outlineVariant
+                                  : Colors.purple.shade300,
+                            ),
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shifts in selected period:',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? scheme.primary
+                                          : Colors.purple.shade700,
+                                    ),
+                              ),
+                              const SizedBox(height: 8.0),
+                              _buildShiftsList(
+                                _getShiftsForRange(_startDate!, _endDate!),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_startDate != null && _endDate == null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? scheme.surfaceContainerHighest
+                                : Colors.amber.shade50,
+                            border: Border.all(
+                              color: isDark
+                                  ? scheme.outlineVariant
+                                  : Colors.amber.shade300,
+                            ),
+                            borderRadius: BorderRadius.circular(6.0),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Shifts on ${DateFormat('MMM d, yyyy').format(_startDate!)}:',
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? scheme.primary
+                                          : Colors.amber.shade700,
+                                    ),
+                              ),
+                              const SizedBox(height: 8.0),
+                              _buildShiftsList(_getShiftsForDate(_startDate!)),
+                            ],
+                          ),
+                        ),
+                      ],
+                      // Display your absence requests
+                      const SizedBox(height: 12.0),
+                      Container(
+                        padding: const EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? scheme.surfaceContainerHighest
+                              : Colors.red.shade50,
+                          border: Border.all(
+                            color: isDark
+                                ? scheme.outlineVariant
+                                : Colors.red.shade300,
+                          ),
+                          borderRadius: BorderRadius.circular(6.0),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Your Absence Requests:',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark
+                                        ? scheme.primary
+                                        : Colors.red.shade700,
+                                  ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            _buildAbsenceRequestsList(),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
     );
   }

@@ -80,9 +80,11 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (state is TicketDetailLoaded) {
-            final canEdit = isItSupportDepartment(
-              context.read<AuthBloc>().currentUser,
-            );
+            final currentUser = context.read<AuthBloc>().currentUser;
+            final canEdit =
+                isItSupportDepartment(currentUser) ||
+                isLedelseDepartment(currentUser) ||
+                state.ticket.createdByUserId == currentUser?.id;
             return _DetailContent(
               ticket: state.ticket,
               commentController: _commentController,
@@ -115,9 +117,11 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
           }
 
           if (state is TicketUpdateSuccess) {
-            final canEdit = isItSupportDepartment(
-              context.read<AuthBloc>().currentUser,
-            );
+            final currentUser = context.read<AuthBloc>().currentUser;
+            final canEdit =
+                isItSupportDepartment(currentUser) ||
+                isLedelseDepartment(currentUser) ||
+                state.ticket.createdByUserId == currentUser?.id;
             return _DetailContent(
               ticket: state.ticket,
               commentController: _commentController,
@@ -153,9 +157,11 @@ class _TicketDetailPageState extends State<TicketDetailPage> {
             );
           }
           if (state is CommentAddSuccess) {
-            final canEdit = isItSupportDepartment(
-              context.read<AuthBloc>().currentUser,
-            );
+            final currentUser = context.read<AuthBloc>().currentUser;
+            final canEdit =
+                isItSupportDepartment(currentUser) ||
+                isLedelseDepartment(currentUser) ||
+                state.ticket.createdByUserId == currentUser?.id;
             return _DetailContent(
               ticket: state.ticket,
               commentController: _commentController,

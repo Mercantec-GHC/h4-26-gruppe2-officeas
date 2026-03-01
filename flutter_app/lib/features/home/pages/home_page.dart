@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
     final subduedText = Theme.of(
       context,
     ).textTheme.bodyMedium?.color?.withValues(alpha: 0.72);
-    final showTickets = user != null && isItSupportDepartment(user);
+    final showTickets = user != null;
     final showAbsenceApprovals = user != null && isLedelseDepartment(user);
 
     final welcomeCard = Container(

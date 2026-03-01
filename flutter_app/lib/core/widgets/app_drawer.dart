@@ -26,7 +26,7 @@ class AppDrawer extends StatelessWidget {
       context,
     ).appBarTheme.titleTextStyle?.copyWith(color: headerForeground);
     final user = context.read<AuthBloc>().currentUser;
-    final showTickets = isItSupportDepartment(user);
+    final showTickets = user != null;
     final showApprovals = canApproveAccounts(user);
     final showAbsenceApprovals = isLedelseDepartment(user);
 
