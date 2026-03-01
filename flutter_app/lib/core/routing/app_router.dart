@@ -125,7 +125,7 @@ GoRouter createAppRouter(ValueNotifier<bool> authNotifier) {
       ),
       GoRoute(
         path: '/tickets/new',
-        builder: (_, __) => const ItSupportGuard(child: CreateTicketPage()),
+        builder: (_, __) => const CreateTicketPage(),
       ),
       GoRoute(
         path: '/tickets/:ticketId',
