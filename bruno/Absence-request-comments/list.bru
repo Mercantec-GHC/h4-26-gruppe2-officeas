@@ -1,0 +1,12 @@
+meta {
+  name: List Absence Request Comments
+}
+
+get {
+  url: {{base_url}}/absence-requests/{{absenceRequestId}}/comments
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

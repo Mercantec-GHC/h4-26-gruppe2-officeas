@@ -1,0 +1,18 @@
+meta {
+  name: Update Department
+}
+
+put {
+  url: {{base_url}}/departments/{{id}}
+}
+
+body {
+  {
+    "name": "Updated Department Name"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

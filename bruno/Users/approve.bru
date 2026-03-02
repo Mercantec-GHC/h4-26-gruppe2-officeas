@@ -1,0 +1,12 @@
+meta {
+  name: Approve User
+}
+
+put {
+  url: {{base_url}}/users/{{id}}/approve
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

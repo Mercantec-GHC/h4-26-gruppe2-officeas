@@ -1,0 +1,11 @@
+meta {
+  name: Delete Ticket Comment
+}
+
+delete {
+  url: {{base_url}}/ticket-comments/{{id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

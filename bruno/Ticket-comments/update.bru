@@ -1,0 +1,18 @@
+meta {
+  name: Update Ticket Comment
+}
+
+put {
+  url: {{base_url}}/ticket-comments/{{id}}
+}
+
+body {
+  {
+    "content": "Updated comment text"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

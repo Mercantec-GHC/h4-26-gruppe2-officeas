@@ -1,0 +1,12 @@
+meta {
+  name: Get Department
+}
+
+get {
+  url: {{base_url}}/departments/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,16 @@
+meta {
+  name: Report Sick Today
+}
+
+post {
+  url: {{base_url}}/absence-requests/sick-today
+}
+
+body {
+  {}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

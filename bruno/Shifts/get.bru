@@ -1,0 +1,12 @@
+meta {
+  name: Get Shift
+}
+
+get {
+  url: {{base_url}}/shifts/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

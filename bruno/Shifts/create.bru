@@ -1,0 +1,20 @@
+meta {
+  name: Create Shift
+}
+
+post {
+  url: {{base_url}}/shifts
+}
+
+body {
+  {
+    "user_id": "00000000-0000-0000-0000-000000000000",
+    "start_time": "2025-01-15T08:00:00Z",
+    "end_time": "2025-01-15T16:00:00Z"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

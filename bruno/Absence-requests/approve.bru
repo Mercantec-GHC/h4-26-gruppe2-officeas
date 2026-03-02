@@ -1,0 +1,16 @@
+meta {
+  name: Approve Absence Request
+}
+
+put {
+  url: {{base_url}}/absence-requests/{{id}}/approve
+}
+
+body {
+  {}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,12 @@
+meta {
+  name: List Shifts by User
+}
+
+get {
+  url: {{base_url}}/shifts/user/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

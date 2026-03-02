@@ -1,0 +1,20 @@
+meta {
+  name: Register
+}
+
+post {
+  url: {{base_url}}/auth/register
+}
+
+body {
+  {
+    "name": "New User",
+    "email": "newuser@example.com",
+    "password": "secure-password",
+    "department_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
+
+headers {
+  Content-Type: application/json
+}

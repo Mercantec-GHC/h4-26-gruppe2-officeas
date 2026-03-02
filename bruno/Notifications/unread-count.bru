@@ -1,0 +1,12 @@
+meta {
+  name: Unread Count
+}
+
+get {
+  url: {{base_url}}/notifications/unread-count
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
