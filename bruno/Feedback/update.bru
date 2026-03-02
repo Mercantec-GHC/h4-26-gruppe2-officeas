@@ -1,0 +1,19 @@
+meta {
+  name: Update Feedback
+}
+
+put {
+  url: {{base_url}}/feedback/{{id}}
+}
+
+body {
+  {
+    "rating": 9,
+    "message": "Updated feedback message"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

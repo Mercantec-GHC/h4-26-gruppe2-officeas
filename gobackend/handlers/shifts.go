@@ -275,8 +275,9 @@ func (h Shifts) ListByUser(w http.ResponseWriter, r *http.Request) {
 
 // GenerateShiftsRequest is the body for POST /shifts/generate
 type GenerateShiftsRequest struct {
-	StartDate string `json:"start_date"` // YYYY-MM-DD
-	EndDate   string `json:"end_date"`   // YYYY-MM-DD
+	StartDate           string         `json:"start_date"`            // YYYY-MM-DD
+	EndDate             string         `json:"end_date"`              // YYYY-MM-DD
+	PriorAssignedCounts map[string]int `json:"prior_assigned_counts"` // optional: user_id -> count from previous chunks for cross-chunk balance
 }
 
 // GenerateShiftsResponse is the response for POST /shifts/generate
@@ -369,12 +370,26 @@ func (h Shifts) Generate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Initialize assigned-shift count per user (all users from departments)
+	// Initialize assigned-shift count per user (all users from departments).
+	// If PriorAssignedCounts is provided (e.g. from previous chunked requests), use it so balance carries across chunks.
 	assignedShifts := make(map[uuid.UUID]int)
 
 	for i := range departments {
 		for _, u := range departments[i].Users {
 			assignedShifts[u.Id] = 0
+		}
+	}
+
+	if len(req.PriorAssignedCounts) > 0 {
+		for idStr, count := range req.PriorAssignedCounts {
+			parsed, err := uuid.Parse(idStr)
+			if err != nil {
+				continue
+			}
+			
+			if _, ok := assignedShifts[parsed]; ok {
+				assignedShifts[parsed] = count
+			}
 		}
 	}
 

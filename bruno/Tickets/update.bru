@@ -1,0 +1,21 @@
+meta {
+  name: Update Ticket
+}
+
+put {
+  url: {{base_url}}/tickets/{{id}}
+}
+
+body {
+  {
+    "title": "Updated title",
+    "description": "Updated description",
+    "status": "IN_PROGRESS",
+    "assigned_to_user_id": null
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

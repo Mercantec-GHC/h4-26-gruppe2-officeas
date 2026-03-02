@@ -1,0 +1,21 @@
+meta {
+  name: Update Absence Request
+}
+
+put {
+  url: {{base_url}}/absence-requests/{{id}}
+}
+
+body {
+  {
+    "type": "VACATION",
+    "start_date": "2025-02-01",
+    "end_date": "2025-02-07",
+    "shift_id": null
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

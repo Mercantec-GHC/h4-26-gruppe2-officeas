@@ -1,0 +1,12 @@
+meta {
+  name: Get Feedback
+}
+
+get {
+  url: {{base_url}}/feedback/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

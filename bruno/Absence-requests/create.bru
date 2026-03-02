@@ -1,0 +1,21 @@
+meta {
+  name: Create Absence Request
+}
+
+post {
+  url: {{base_url}}/absence-requests
+}
+
+body {
+  {
+    "type": "VACATION",
+    "start_date": "2025-02-01",
+    "end_date": "2025-02-05",
+    "shift_id": null
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Create User
+}
+
+post {
+  url: {{base_url}}/users
+}
+
+body {
+  {
+    "name": "New User",
+    "email": "newuser@example.com",
+    "password": "secure-password",
+    "department_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

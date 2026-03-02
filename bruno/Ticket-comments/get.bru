@@ -1,0 +1,12 @@
+meta {
+  name: Get Ticket Comment
+}
+
+get {
+  url: {{base_url}}/ticket-comments/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,18 @@
+meta {
+  name: Update Absence Request Comment
+}
+
+put {
+  url: {{base_url}}/absence-request-comments/{{id}}
+}
+
+body {
+  {
+    "content": "Updated comment text"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

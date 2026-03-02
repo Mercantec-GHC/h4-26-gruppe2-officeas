@@ -1,0 +1,15 @@
+{
+  "version": "1",
+  "name": "YourOffice API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ],
+  "size": 0.010057449340820312,
+  "filesCount": 54,
+  "presets": {
+    "requestType": "http",
+    "requestUrl": "https://officeas-api.mecantec.tech/api"
+  }
+}

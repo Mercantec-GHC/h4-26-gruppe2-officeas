@@ -1,0 +1,12 @@
+meta {
+  name: List Pending Users
+}
+
+get {
+  url: {{base_url}}/users/pending
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

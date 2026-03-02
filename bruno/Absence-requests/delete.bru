@@ -1,0 +1,11 @@
+meta {
+  name: Delete Absence Request
+}
+
+delete {
+  url: {{base_url}}/absence-requests/{{id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

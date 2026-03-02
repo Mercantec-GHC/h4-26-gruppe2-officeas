@@ -1,0 +1,12 @@
+meta {
+  name: Get User
+}
+
+get {
+  url: {{base_url}}/users/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

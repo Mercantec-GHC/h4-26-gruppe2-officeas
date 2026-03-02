@@ -1,0 +1,20 @@
+meta {
+  name: Update User
+}
+
+put {
+  url: {{base_url}}/users/{{id}}
+}
+
+body {
+  {
+    "name": "Updated Name",
+    "email": "updated@example.com",
+    "department_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

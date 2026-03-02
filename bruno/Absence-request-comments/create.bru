@@ -1,0 +1,19 @@
+meta {
+  name: Create Absence Request Comment
+}
+
+post {
+  url: {{base_url}}/absence-requests/{{absenceRequestId}}/comments
+}
+
+body {
+  {
+    "user_id": "{{id}}",
+    "content": "Comment text"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

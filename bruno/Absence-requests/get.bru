@@ -1,0 +1,12 @@
+meta {
+  name: Get Absence Request
+}
+
+get {
+  url: {{base_url}}/absence-requests/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

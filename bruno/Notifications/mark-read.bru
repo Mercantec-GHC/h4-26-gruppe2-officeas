@@ -1,0 +1,12 @@
+meta {
+  name: Mark Notification Read
+}
+
+put {
+  url: {{base_url}}/notifications/{{id}}/read
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

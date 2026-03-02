@@ -1,0 +1,11 @@
+meta {
+  name: Delete User
+}
+
+delete {
+  url: {{base_url}}/users/{{id}}
+}
+
+headers {
+  Authorization: Bearer {{token}}
+}

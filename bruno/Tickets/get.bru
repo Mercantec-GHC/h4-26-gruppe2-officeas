@@ -1,0 +1,12 @@
+meta {
+  name: Get Ticket
+}
+
+get {
+  url: {{base_url}}/tickets/{{id}}
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

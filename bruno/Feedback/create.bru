@@ -1,0 +1,20 @@
+meta {
+  name: Create Feedback
+}
+
+post {
+  url: {{base_url}}/feedback
+}
+
+body {
+  {
+    "rating": 8,
+    "message": "Great experience",
+    "department_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}

@@ -1,0 +1,20 @@
+meta {
+  name: Create Ticket
+}
+
+post {
+  url: {{base_url}}/tickets
+}
+
+body {
+  {
+    "title": "Support request",
+    "description": "Description of the issue",
+    "status": "OPEN"
+  }
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{token}}
+}
