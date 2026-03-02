@@ -96,8 +96,16 @@ class ShiftRepositoryImpl implements ShiftRepository {
     final allCreated = <ShiftEntity>[];
     final allWarnings = <String>[];
 
-    DateTime chunkStart = DateTime(startDate.year, startDate.month, startDate.day);
+    DateTime chunkStart = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
     final endDay = DateTime(endDate.year, endDate.month, endDate.day);
+
+    /// Cross-chunk state: user_id -> number of shifts assigned so far in this run.
+    /// Passed to the backend so balance is preserved across chunked requests.
+    Map<String, int> priorAssignedCounts = {};
 
     while (!chunkStart.isAfter(endDay)) {
       final chunkEnd = chunkStart.add(Duration(days: _generateChunkDays - 1));
@@ -106,6 +114,9 @@ class ShiftRepositoryImpl implements ShiftRepository {
       final result = await remoteDataSource.generateShifts(
         startDate: chunkStart,
         endDate: chunkEndClamped,
+        priorAssignedCounts: priorAssignedCounts.isEmpty
+            ? null
+            : Map.from(priorAssignedCounts),
       );
 
       final failure = result.exceptionOrNull;
@@ -114,15 +125,19 @@ class ShiftRepositoryImpl implements ShiftRepository {
       }
 
       final model = result.dataOrNull!;
-      allCreated.addAll(model.created.map((m) => m.toEntity()));
+      for (final m in model.created) {
+        allCreated.add(m.toEntity());
+
+        priorAssignedCounts[m.userId] =
+            (priorAssignedCounts[m.userId] ?? 0) + 1;
+      }
       allWarnings.addAll(model.warnings);
 
       chunkStart = chunkEndClamped.add(const Duration(days: 1));
     }
 
-    return ApiResult.success(GenerateShiftsResult(
-      created: allCreated,
-      warnings: allWarnings,
-    ));
+    return ApiResult.success(
+      GenerateShiftsResult(created: allCreated, warnings: allWarnings),
+    );
   }
 }

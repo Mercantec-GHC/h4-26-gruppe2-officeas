@@ -94,15 +94,24 @@ class ShiftRemoteDataSource {
   }
 
   /// Generate shifts for a date range (Ledelse only). POST /shifts/generate
+  /// [priorAssignedCounts] optional map of user_id -> shift count from previous chunks for cross-chunk balance.
   Future<ApiResult<GenerateShiftsResponseModel>> generateShifts({
     required DateTime startDate,
     required DateTime endDate,
+    Map<String, int>? priorAssignedCounts,
   }) async {
     final startStr = _formatDate(startDate);
     final endStr = _formatDate(endDate);
+    final body = <String, dynamic>{'start_date': startStr, 'end_date': endStr};
+
+    if (priorAssignedCounts != null && priorAssignedCounts.isNotEmpty) {
+      body['prior_assigned_counts'] = priorAssignedCounts.map(
+        (k, v) => MapEntry(k, v),
+      );
+    }
     return await apiClient.post<GenerateShiftsResponseModel>(
       '/shifts/generate',
-      body: {'start_date': startStr, 'end_date': endStr},
+      body: body,
       fromJson: (json) =>
           GenerateShiftsResponseModel.fromJson(json as Map<String, dynamic>),
     );
